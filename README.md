@@ -1,39 +1,78 @@
-# KLU Marketplace
+# KLU Marketplace - React TypeScript Application
 
-A student-first platform for buying and selling items within the KLU college community.
+A modern marketplace application for KLU students to buy and sell items within the college community.
 
 ## Features
-- Secure login and signup for students
-- Browse and search products (electronics, books, essentials, furniture)
-- Add items to cart
-- View and manage your profile
-- Logout and clear local storage
 
-## File Overview
-- `index.html` — Homepage with product listings and navigation
-- `cart.html` — Shopping cart page
-- `login.html` — Login form for users
-- `signup.html` — Signup form for new users
-- `profile.html` — User account/profile section
-- `logout.html` — Logout/clear session page
-- `clear-storage.html` — Clear browser storage (logout shortcut)
-- `auth.js` — Authentication logic (login, signup, session)
-- `script.js` — Main site interactivity and product filtering
-- `styles.css` — Main stylesheet for all pages
-- `assets/klu-campus.jpg` — Campus image used in the site
+- 🛍️ Product browsing with search and category filters
+- 🛒 Shopping cart functionality
+- 👤 User authentication (Login/Signup)
+- 📱 Responsive design
+- 🎨 Beautiful glassmorphism UI with animations
+- ⚡ Built with React, TypeScript, and Vite
 
-## How to Run
-1. Clone the repository:
-   ```
-   git clone https://github.com/bharathkunchepu/klumarketplace.git
-   ```
-2. Open the folder in VS Code or your preferred editor.
-3. Open `index.html` in your browser to start using the marketplace.
+## Getting Started
 
-## Customization
-- Update `styles.css` for design changes.
-- Add more products or categories in `index.html`.
-- Extend authentication logic in `auth.js` as needed.
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+3. Open your browser and navigate to `http://localhost:5173`
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist` directory.
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable React components
+├── pages/         # Page components
+├── hooks/         # Custom React hooks
+├── utils/         # Utility functions
+├── types/         # TypeScript type definitions
+└── App.tsx        # Main app component with routing
+```
+
+## Technologies Used
+
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **React Router** - Client-side routing
+- **Vite** - Build tool and dev server
+- **CSS3** - Styling with custom properties and animations
+
+## API Configuration
+
+The app expects a backend API running at `http://localhost:8080/api`. Make sure your backend is running for authentication and profile features to work.
+
+## Features Preserved
+
+- ✅ All original styles and theme
+- ✅ All animations and transitions
+- ✅ Responsive design
+- ✅ Cart functionality
+- ✅ Authentication flow
+- ✅ Product filtering and search
 
 ## License
-This project is for educational purposes at KLU. Feel free to use and modify for your campus needs.
+
+© 2025 KLU Marketplace. All rights reserved.
