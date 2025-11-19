@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLU Marketplace - Cart</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">KLU Marketplace</div>
+            <button class="nav-toggle" type="button" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#products" class="active">Products</a></li>
+                <li><a href="signup.html" class="btn-signup">Join</a></li>
+                <li><a href="cart.html" class="cart-link active">Cart <span class="cart-count" id="cart-count">0</span></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="cart-section products" data-animate>
+        <h2>Your Cart</h2>
+        <div class="cart-layout">
+            <div class="cart-list" id="cart-list"></div>
+            <div class="cart-empty" id="cart-empty">
+                <div class="cart-empty-inner">
+                    <h3>Your cart is empty</h3>
+                    <p>Add items from the marketplace and contact sellers to complete your purchase.</p>
+                    <button class="btn-primary" type="button" onclick="location.href='index.html#products'">Browse Products</button>
+                </div>
+            </div>
+            <aside class="cart-summary">
+                <h3>Checkout Summary</h3>
+                <div class="cart-summary-row">
+                    <span>Total Items</span>
+                    <span id="cart-summary-count">0</span>
+                </div>
+                <div class="cart-summary-row total">
+                    <span>Estimated Total</span>
+                    <span id="cart-summary-total">₹0</span>
+                </div>
+                <p class="cart-summary-note">
+                    Contact the seller to confirm availability and agree on a pickup time on campus.
+                </p>
+                <button class="btn-primary btn-full" id="checkout-btn" type="button" disabled>Proceed to Checkout</button>
+            </aside>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2025 KLU Marketplace. All rights reserved.</p>
+        <p>Built for student-to-student exchanges within campus.</p>
+    </footer>
+    <script src="script.js" defer></script>
+</body>
+</html>
+

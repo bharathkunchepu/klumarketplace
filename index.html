@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLU Marketplace - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">KLU Marketplace</div>
+            <button class="nav-toggle" type="button" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#products">Products</a></li>
+                <li><a href="signup.html" class="btn-signup">Join</a></li>
+                <li><a href="profile.html" id="nav-account"><span class="nav-avatar">👤</span></a></li>
+                
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home" data-animate>
+        <div class="hero-content">
+            <h1>Welcome to KLU Marketplace</h1>
+            <p>Buy and Sell Items Within Your College Community — safe, simple, and student-first.</p>
+            <button class="btn-primary" onclick="location.href='#products'">Start Shopping</button>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section id="products" class="products" data-animate>
+        <h2>Featured Items</h2>
+        <div class="products-toolbar">
+            <div class="toolbar-left">
+                <input type="search" id="product-search" placeholder="Search items, sellers or keywords…" aria-label="Search products">
+                <div class="filter-tabs" role="tablist" aria-label="Product categories">
+                    <button class="filter-tab active" data-filter="all" type="button">All</button>
+                    <button class="filter-tab" data-filter="electronics" type="button">Electronics</button>
+                    <button class="filter-tab" data-filter="books" type="button">Books</button>
+                    <button class="filter-tab" data-filter="essentials" type="button">Essentials</button>
+                    <button class="filter-tab" data-filter="furniture" type="button">Furniture</button>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <p class="results-count"><span id="results-count">8</span> items</p>
+            </div>
+        </div>
+        <div class="products-grid" id="product-grid">
+            <!-- Product Card 1 -->
+            <div class="product-card" data-id="prod-laptop" data-category="electronics" data-name="Used Laptop Dell Inspiron 15" data-price="25000" data-seller="John Doe" data-seller-email="john.doe@klu.edu.in" data-image="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=60" alt="Used Laptop">
+                </div>
+                <div class="product-info">
+                    <h3>Used Laptop</h3>
+                    <p class="seller">Seller: John Doe</p>
+                    <p class="description">Dell Inspiron 15, 8GB RAM, 256GB SSD</p>
+                    <div class="product-footer">
+                        <span class="price">₹25,000</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 2 -->
+            <div class="product-card" data-id="prod-books" data-category="books" data-name="Engineering Books Bundle Data Structures DBMS OS" data-price="2500" data-seller="Sarah Smith" data-seller-email="sarah.smith@klu.edu.in" data-image="https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=800&q=60" alt="Study Books">
+                </div>
+                <div class="product-info">
+                    <h3>Engineering Books Bundle</h3>
+                    <p class="seller">Seller: Sarah Smith</p>
+                    <p class="description">Data Structures, DBMS, and OS Books</p>
+                    <div class="product-footer">
+                        <span class="price">₹2,500</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 3 -->
+            <div class="product-card" data-id="prod-headphones" data-category="electronics" data-name="Wireless Headphones Noise Cancelling" data-price="5500" data-seller="Mike Johnson" data-seller-email="mike.johnson@klu.edu.in" data-image="https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=800&q=60" alt="Wireless Headphones">
+                </div>
+                <div class="product-info">
+                    <h3>Wireless Headphones</h3>
+                    <p class="seller">Seller: Mike Johnson</p>
+                    <p class="description">Noise Cancelling, 30hr Battery</p>
+                    <div class="product-footer">
+                        <span class="price">₹5,500</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 4 -->
+            <div class="product-card" data-id="prod-smartphone" data-category="electronics" data-name="Smartphone OnePlus 9" data-price="18000" data-seller="Emma Davis" data-seller-email="emma.davis@klu.edu.in" data-image="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=60" alt="Smartphone">
+                </div>
+                <div class="product-info">
+                    <h3>Smartphone</h3>
+                    <p class="seller">Seller: Emma Davis</p>
+                    <p class="description">OnePlus 9, 128GB, Good Condition</p>
+                    <div class="product-footer">
+                        <span class="price">₹18,000</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 5 -->
+            <div class="product-card" data-id="prod-backpack" data-category="essentials" data-name="College Backpack Waterproof USB Charging" data-price="1800" data-seller="Alex Brown" data-seller-email="alex.brown@klu.edu.in" data-image="https://images.unsplash.com/photo-1545987790-64f5b7f5d9b7?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1545987790-64f5b7f5d9b7?auto=format&fit=crop&w=800&q=60" alt="College Backpack">
+                </div>
+                <div class="product-info">
+                    <h3>College Backpack</h3>
+                    <p class="seller">Seller: Alex Brown</p>
+                    <p class="description">Waterproof, 30L Capacity, USB Charging</p>
+                    <div class="product-footer">
+                        <span class="price">₹1,800</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 6 -->
+            <div class="product-card" data-id="prod-tablet" data-category="electronics" data-name="iPad Air 2 Tablet" data-price="22000" data-seller="Lisa White" data-seller-email="lisa.white@klu.edu.in" data-image="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=60" alt="Tablet">
+                </div>
+                <div class="product-info">
+                    <h3>iPad Air 2</h3>
+                    <p class="seller">Seller: Lisa White</p>
+                    <p class="description">64GB, Space Gray, with Charger</p>
+                    <div class="product-footer">
+                        <span class="price">₹22,000</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 7 -->
+            <div class="product-card" data-id="prod-monitor" data-category="electronics" data-name="24 inch IPS Monitor Dell" data-price="8500" data-seller="Chris Wilson" data-seller-email="chris.wilson@klu.edu.in" data-image="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=800&q=60" alt="Monitor">
+                </div>
+                <div class="product-info">
+                    <h3>24&quot; IPS Monitor</h3>
+                    <p class="seller">Seller: Chris Wilson</p>
+                    <p class="description">Full HD, 60Hz, Dell Brand</p>
+                    <div class="product-footer">
+                        <span class="price">₹8,500</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Card 8 -->
+            <div class="product-card" data-id="prod-chair" data-category="furniture" data-name="Ergonomic Study Chair" data-price="6000" data-seller="Rachel Green" data-seller-email="rachel.green@klu.edu.in" data-image="https://images.unsplash.com/photo-1584467735815-3c8e4e1a0d1b?auto=format&fit=crop&w=800&q=60">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1584467735815-3c8e4e1a0d1b?auto=format&fit=crop&w=800&q=60" alt="Study Chair">
+                </div>
+                <div class="product-info">
+                    <h3>Ergonomic Study Chair</h3>
+                    <p class="seller">Seller: Rachel Green</p>
+                    <p class="description">Comfortable, Adjustable Height</p>
+                    <div class="product-footer">
+                        <span class="price">₹6,000</span>
+                        <button class="btn-buy">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="products" data-animate>
+        <h2>About KLU Marketplace</h2>
+        <div class="products-grid" style="grid-template-columns: 1fr 1fr; gap:2rem;">
+            <div style="background:var(--glass-bg); border:1px solid var(--glass-border); padding:1.5rem; border-radius:16px;">
+                <h3 style="color:var(--primary-color)">What we are</h3>
+                <p style="color:var(--text-secondary)">
+                    KLU Marketplace is a student-run classifieds platform for the college community. We connect buyers and sellers on campus
+                    for textbooks, gadgets, furniture and more — reducing waste and helping students save money.
+                </p>
+                <ul style="color:var(--text-secondary); margin-top:0.5rem;">
+                    <li>Local, secure transactions</li>
+                    <li>Verified student profiles (coming soon)</li>
+                    <li>Low fees — community focused</li>
+                </ul>
+            </div>
+
+            <div style="background:var(--glass-bg); border:1px solid var(--glass-border); padding:1.5rem; border-radius:16px;">
+                <h3 style="color:var(--primary-color)">Why choose us</h3>
+                <p style="color:var(--text-secondary)">
+                    Built for students — quick listings, clear communication, and campus pickup options make trading easy and safe.
+                </p>
+                <p style="color:var(--text-secondary)"><strong>Made by students • For students • Campus-first</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mottos / Values -->
+    <section id="mottos" class="products" data-animate>
+        <h2>Our Mottos</h2>
+        <div class="products-grid" style="grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:1.5rem;">
+            <div class="product-card" style="padding:1rem;">
+                <h3 style="color:var(--primary-color)">Sustainability</h3>
+                <p class="description">Give items a second life — reduce campus waste by buying and selling used goods.</p>
+            </div>
+            <div class="product-card" style="padding:1rem;">
+                <h3 style="color:var(--primary-color)">Affordability</h3>
+                <p class="description">Affordable options for students on a budget.</p>
+            </div>
+            <div class="product-card" style="padding:1rem;">
+                <h3 style="color:var(--primary-color)">Trust</h3>
+                <p class="description">Simple, transparent listings and clear seller details.</p>
+            </div>
+            <div class="product-card" style="padding:1rem;">
+                <h3 style="color:var(--primary-color)">Community</h3>
+                <p class="description">Encourage campus connections and peer-to-peer support.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how" class="products" data-animate>
+        <h2>How It Works</h2>
+        <div class="products-grid" style="grid-template-columns: repeat(3,1fr); gap:1.5rem;">
+            <div class="product-card" style="padding:1.25rem; text-align:center;">
+                <div style="font-size:2rem; margin-bottom:.5rem;">📝</div>
+                <h3 style="color:var(--primary-color)">List Item</h3>
+                <p class="description">Quickly create a listing with photos, price and pickup details.</p>
+            </div>
+            <div class="product-card" style="padding:1.25rem; text-align:center;">
+                <div style="font-size:2rem; margin-bottom:.5rem;">💬</div>
+                <h3 style="color:var(--primary-color)">Chat & Meet</h3>
+                <p class="description">Message sellers, arrange a safe pickup on campus.</p>
+            </div>
+            <div class="product-card" style="padding:1.25rem; text-align:center;">
+                <div style="font-size:2rem; margin-bottom:.5rem;">✅</div>
+                <h3 style="color:var(--primary-color)">Complete Trade</h3>
+                <p class="description">Accept offers and close the sale — simple and local.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section id="testimonials" class="products" data-animate>
+        <h2>What Students Say</h2>
+        <div class="products-grid" style="grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap:1.5rem;">
+            <div class="product-card" style="padding:1rem;">
+                <p class="description">"Found all my semester books here — saved a ton!"</p>
+                <p style="color:var(--text-secondary); margin-top:.5rem;">— Priya, CSE</p>
+            </div>
+            <div class="product-card" style="padding:1rem;">
+                <p class="description">"Easy to list and quick responses from buyers."</p>
+                <p style="color:var(--text-secondary); margin-top:.5rem;">— Arjun, ECE</p>
+            </div>
+            <div class="product-card" style="padding:1rem;">
+                <p class="description">"Great place to sell my old gadgets after upgrading."</p>
+                <p style="color:var(--text-secondary); margin-top:.5rem;">— Sneha, ME</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter / Contact CTA -->
+    <section id="contact" class="products" data-animate>
+        <h2>Stay Updated</h2>
+        <div style="max-width:900px;margin:0 auto; display:grid; grid-template-columns:1fr 320px; gap:1rem; align-items:center;">
+            <div style="color:var(--text-secondary)">
+                <p>Join our newsletter for notified listings, campus events and safety tips.</p>
+                <ul style="color:var(--text-secondary);">
+                    <li>Weekly highlights</li>
+                    <li>Top deals on campus</li>
+                    <li>Safety & pickup guidelines</li>
+                </ul>
+            </div>
+            <form id="newsletter-form" class="newsletter-form-inline" style="display:flex; gap:.5rem;">
+                <input type="email" id="newsletter-email" placeholder="you@klu.edu.in" required style="flex:1; padding:.75rem; border-radius:10px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.2); color:var(--text-primary)"/>
+                <button class="btn-primary" type="submit">Subscribe</button>
+            </form>
+            <p class="form-feedback" id="newsletter-feedback" aria-live="polite"></p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 KLU Marketplace. All rights reserved.</p>
+        <p>A platform for students to buy and sell items within campus.</p>
+    </footer>
+    <script src="script.js" defer></script>
+</body>
+</html>
