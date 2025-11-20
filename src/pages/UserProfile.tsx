@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import AnimatedSection from '../components/AnimatedSection';
 import ProductCard from '../components/ProductCard';
 import { User, Item } from '../types';
 import userService from '../services/userService';
-import itemService from '../services/itemService';
 import { handleApiError } from '../utils/errorHandler';
 
 const UserProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [userItems, setUserItems] = useState<Item[]>([]);
+  const [userItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

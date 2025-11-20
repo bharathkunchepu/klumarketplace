@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import AnimatedSection from '../components/AnimatedSection';
 import Pagination from '../components/Pagination';
@@ -9,7 +8,6 @@ import { handleApiError } from '../utils/errorHandler';
 import { showToast } from '../utils/toast';
 
 const Home = () => {
-  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<ItemCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [items, setItems] = useState<Item[]>([]);
@@ -17,7 +15,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchItems = useCallback(async () => {
     try {

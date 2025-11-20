@@ -99,7 +99,10 @@ const Signup = () => {
 
   const handleBlur = (field: keyof SignupData) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
+    const fieldValue = formData[field];
+    if (fieldValue !== undefined) {
+      validateField(field, fieldValue);
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -110,7 +113,13 @@ const Signup = () => {
     allFields.forEach(field => setTouched(prev => ({ ...prev, [field]: true })));
 
     // Validate all fields
-    const validationResults = allFields.map(field => validateField(field, formData[field]));
+    const validationResults = allFields.map(field => {
+      const fieldValue = formData[field];
+      if (fieldValue === undefined) {
+        return false;
+      }
+      return validateField(field, fieldValue);
+    });
     const isValid = validationResults.every(result => result);
 
     if (!isValid || !termsAccepted) {

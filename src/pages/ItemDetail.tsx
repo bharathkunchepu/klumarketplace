@@ -17,7 +17,6 @@ const ItemDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
 
   const fetchItem = async () => {
     try {
@@ -65,14 +64,11 @@ const ItemDetail = () => {
     if (!item) return;
 
     try {
-      setUploadingImage(true);
       const updated = await itemService.uploadItemImage(item.id, file);
       setItem(updated);
       showToast('Image uploaded successfully');
     } catch (err) {
       showToast(handleApiError(err));
-    } finally {
-      setUploadingImage(false);
     }
   };
 

@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { authUtils } from '../utils/auth';
-import { validateEmail, validatePassword } from '../utils/validation';
+import { validateEmail } from '../utils/validation';
 import AnimatedSection from '../components/AnimatedSection';
 
 const Login = () => {

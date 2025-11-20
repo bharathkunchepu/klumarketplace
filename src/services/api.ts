@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
@@ -11,14 +11,14 @@ const api = axios.create({
 
 // Request interceptor - add JWT token to all requests
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('authToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  (error: unknown) => {
     return Promise.reject(error);
   }
 );
@@ -26,8 +26,9 @@ api.interceptors.request.use(
 // Response interceptor - handle 401 errors (unauthorized)
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
+  (error: unknown) => {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 401) {
       // Token expired or invalid - clear auth and redirect to login
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
@@ -38,7 +39,7 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(axiosError);
   }
 );
 
