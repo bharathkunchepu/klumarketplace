@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: klu-marketplace-frontend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: ""
+    startCommand: ""
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+        # Update this with your actual backend API URL
+        value: https://your-backend-api.onrender.com/api/v1
+    healthCheckPath: /health
+    autoDeploy: true
+

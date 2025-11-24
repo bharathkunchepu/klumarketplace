@@ -3,13 +3,20 @@ import { authUtils } from '../utils/auth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireAuth?: boolean; // If true, requires auth. If false, requires no auth (for login/signup pages)
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const isAuthenticated = authUtils.isLoggedIn();
+const ProtectedRoute = ({ children, requireAuth = true }: ProtectedRouteProps) => {
+  const isLoggedIn = authUtils.isLoggedIn();
 
-  if (!isAuthenticated) {
+  // If route requires auth and user is not logged in, redirect to login
+  if (requireAuth && !isLoggedIn) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If route requires no auth (login/signup) and user is logged in, redirect to products
+  if (!requireAuth && isLoggedIn) {
+    return <Navigate to="/products" replace />;
   }
 
   return <>{children}</>;

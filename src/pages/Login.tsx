@@ -1,102 +1,159 @@
-import { useState, FormEvent, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope, faLock, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { authUtils } from '../utils/auth';
-import { validateEmail, validatePassword } from '../utils/validation';
-import AnimatedSection from '../components/AnimatedSection';
+import { toastUtils } from '../utils/toast';
+import { ErrorMessages, extractErrorMessage } from '../utils/errorMessages';
+
+interface FormData {
+  email: string;
+  password: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+}
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [touched, setTouched] = useState({ email: false, password: false });
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Redirect if already logged in
   useEffect(() => {
-    const emailFromQuery = new URLSearchParams(location.search).get('email');
-    if (emailFromQuery) {
-      setEmail(emailFromQuery);
+    if (authUtils.isLoggedIn()) {
+      navigate('/products', { replace: true });
     }
-  }, [location]);
+  }, [navigate]);
 
-  const validateField = (field: 'email' | 'password', value: string) => {
-    if (field === 'email') {
-      const result = validateEmail(value);
-      setEmailError(result.error || '');
-      return result.isValid;
-    } else {
-      if (!value) {
-        setPasswordError('Password is required');
-        return false;
-      }
-      setPasswordError('');
-      return true;
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return ErrorMessages.VALIDATION.EMAIL_REQUIRED;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return ErrorMessages.VALIDATION.EMAIL_INVALID;
+    }
+    return undefined;
+  };
+
+  const validatePassword = (password: string): string | undefined => {
+    if (!password) {
+      return ErrorMessages.VALIDATION.PASSWORD_REQUIRED;
+    }
+    return undefined;
+  };
+
+  const validateField = (name: keyof FormData, value: string): boolean => {
+    let error: string | undefined;
+
+    switch (name) {
+      case 'email':
+        error = validateEmail(value);
+        break;
+      case 'password':
+        error = validatePassword(value);
+        break;
+    }
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error,
+    }));
+
+    return !error;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (touched[name]) {
+      validateField(name as keyof FormData, value);
     }
   };
 
-  const handleBlur = (field: 'email' | 'password') => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    if (field === 'email') {
-      validateField('email', email);
-    } else {
-      validateField('password', password);
-    }
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setEmail(value);
-    if (touched.email) {
-      validateField('email', value);
-    }
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPassword(value);
-    if (touched.password) {
-      validateField('password', value);
-    }
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+    validateField(name as keyof FormData, value);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setTouched({ email: true, password: true });
     
-    const isEmailValid = validateField('email', email);
-    const isPasswordValid = validateField('password', password);
+    // Mark all fields as touched
+    const allFields: (keyof FormData)[] = ['email', 'password'];
+    allFields.forEach((field) => {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+      validateField(field, formData[field]);
+    });
 
-    if (!isEmailValid || !isPasswordValid) {
+    // Check if form is valid
+    const isValid = allFields.every((field) => {
+      const fieldError = errors[field];
+      if (fieldError) return false;
+      return validateField(field, formData[field]);
+    });
+
+    if (!isValid) {
       return;
     }
 
     setIsSubmitting(true);
-    setEmailError('');
-    setPasswordError('');
-
     try {
-      await authUtils.login({ email, password });
-      const redirect = (location.state as { redirect?: string })?.redirect || '/';
-      navigate(redirect);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login failed';
-      if (message.includes('Account locked') || message.includes('locked')) {
-        setPasswordError(message);
-        setEmailError('');
-      } else if (message.includes('No account found') || message.includes('Invalid email')) {
-        setEmailError(message);
-        setPasswordError('');
-        setTimeout(() => {
-          navigate('/signup', { state: { email, redirect: location.state } });
-        }, 2000);
-      } else if (message.includes('Invalid') && message.includes('password')) {
-        setPasswordError(message);
-        setEmailError('');
-      } else {
-        setPasswordError(message);
+      await authUtils.login({ email: formData.email, password: formData.password });
+      toastUtils.showLoginSuccess();
+      // Redirect to products page after successful login
+      navigate('/products', { replace: true });
+    } catch (error: any) {
+      const errorMessage = extractErrorMessage(error);
+      const apiMessage = error?.response?.data?.message || errorMessage;
+      
+      // Determine if error should be shown inline or as toast
+      // Authentication errors (invalid credentials, account not found) - show inline on password field
+      if (apiMessage.toLowerCase().includes('invalid') || 
+          apiMessage.toLowerCase().includes('incorrect') ||
+          apiMessage.toLowerCase().includes('no account') ||
+          apiMessage.toLowerCase().includes('not found') ||
+          apiMessage.toLowerCase().includes('wrong password')) {
+        setErrors((prev) => ({ 
+          ...prev, 
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS 
+        }));
+      } 
+      // Account locked - show as toast
+      else if (apiMessage.toLowerCase().includes('locked') || 
+               apiMessage.toLowerCase().includes('disabled')) {
+        toastUtils.error(apiMessage || ErrorMessages.AUTH.ACCOUNT_LOCKED);
+      }
+      // Network/server errors - show as toast
+      else if (error?.code === 'ERR_NETWORK' || 
+               error?.message === 'Network Error' ||
+               error?.response?.status >= 500) {
+        toastUtils.showApiError(error);
+      }
+      // Other errors - show inline on password field
+      else {
+        setErrors((prev) => ({ 
+          ...prev, 
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS 
+        }));
       }
     } finally {
       setIsSubmitting(false);
@@ -104,134 +161,123 @@ const Login = () => {
   };
 
   return (
-    <AnimatedSection className="auth-section">
-      <div className="auth-container">
-        <div className="auth-card-modern">
-          <div className="auth-header">
-            <div className="auth-icon">🔐</div>
-            <h1>Welcome Back</h1>
-            <p className="subtitle">Sign in to your KLU Marketplace account</p>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md mx-auto">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-royal-blue to-royal-blue-600 px-8 py-6">
+            <h1 className="text-h1 font-heading font-bold text-white text-center">
+              Welcome Back
+            </h1>
+            <p className="text-body text-white/90 text-center mt-2 font-body">
+              Sign in to your KLU Marketplace account
+            </p>
           </div>
 
-          <form className="auth-form-modern" onSubmit={handleSubmit} noValidate>
-            <div className="form-row-modern">
-              <div className={`form-group-modern ${emailError ? 'error' : touched.email && email ? 'success' : ''}`}>
-                <label htmlFor="email">
-                  Email Address <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">📧</span>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="your.email@klu.edu.in"
-                    value={email}
-                    onChange={handleEmailChange}
-                    onBlur={() => handleBlur('email')}
-                    className={emailError ? 'input-error' : ''}
-                    aria-invalid={!!emailError}
-                    aria-describedby={emailError ? 'email-error' : undefined}
-                  />
-                  {touched.email && !emailError && email && (
-                    <span className="input-success-icon">✓</span>
-                  )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                Email Address <span className="text-coral">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FontAwesomeIcon icon={faEnvelope} className="text-gray-400" />
                 </div>
-                {emailError && (
-                  <span className="error-message-modern" id="email-error" role="alert">
-                    {emailError}
-                  </span>
-                )}
-                {touched.email && !emailError && email && (
-                  <span className="success-message">Email looks good!</span>
-                )}
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${
+                    errors.email && touched.email
+                      ? 'border-coral focus:ring-coral focus:border-coral'
+                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                  } focus:outline-none focus:ring-2`}
+                  placeholder="yourname@kluniversity.edu"
+                  autoComplete="email"
+                />
               </div>
-
-              <div className={`form-group-modern ${passwordError ? 'error' : touched.password && password ? 'success' : ''}`}>
-                <label htmlFor="password">
-                  Password <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">🔒</span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={handlePasswordChange}
-                    onBlur={() => handleBlur('password')}
-                    className={passwordError ? 'input-error' : ''}
-                    aria-invalid={!!passwordError}
-                    aria-describedby={passwordError ? 'password-error' : undefined}
-                  />
-                  <button
-                    type="button"
-                    className="toggle-password-modern"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                {passwordError && (
-                  <span className="error-message-modern" id="password-error" role="alert">
-                    {passwordError}
-                  </span>
-                )}
-              </div>
+              {errors.email && touched.email && (
+                <p className="mt-1 text-body-sm text-coral font-body">{errors.email}</p>
+              )}
             </div>
 
-            <div className="form-options">
-              <div className="form-remember">
-                <input type="checkbox" id="remember" name="remember" />
-                <label htmlFor="remember">Remember me</label>
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                Password <span className="text-coral">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FontAwesomeIcon icon={faLock} className="text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-md font-body text-body ${
+                    errors.password && touched.password
+                      ? 'border-coral focus:ring-coral focus:border-coral'
+                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                  } focus:outline-none focus:ring-2`}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                </button>
               </div>
-              <Link to="#" className="forgot-password-link" onClick={(e) => { e.preventDefault(); alert('Password reset is not configured in this demo. Please contact the admin.'); }}>
-                Forgot Password?
+              {errors.password && touched.password && (
+                <p className="mt-1 text-body-sm text-coral font-body">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="flex items-center justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-body-sm text-royal-blue hover:text-royal-blue-600 font-body transition-colors"
+              >
+                Forgot password?
               </Link>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary-modern btn-full" 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="spinner"></span>
-                  Signing In...
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <span className="btn-arrow">→</span>
-                </>
-              )}
-            </button>
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-royal-blue text-white py-3 px-4 rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 focus:outline-none focus:ring-2 focus:ring-royal-blue focus:ring-offset-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
+              >
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
+              </button>
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-body-sm text-gray-600 font-body">
+                Don't have an account?{' '}
+                <Link to="/signup" className="text-royal-blue hover:text-royal-blue-600 font-body font-medium">
+                  Create one here
+                </Link>
+              </p>
+            </div>
           </form>
-
-          <div className="auth-divider-modern">
-            <span>OR</span>
-          </div>
-
-          <div className="social-login-modern">
-            <button type="button" className="btn-social-modern google" onClick={() => alert('Google login is not configured in this demo.')}>
-              <span className="social-icon">G</span>
-              <span>Continue with Google</span>
-            </button>
-            <button type="button" className="btn-social-modern facebook" onClick={() => alert('Facebook login is not configured in this demo.')}>
-              <span className="social-icon">f</span>
-              <span>Continue with Facebook</span>
-            </button>
-          </div>
-
-          <p className="auth-link-modern">
-            Don't have an account? <Link to="/signup">Sign Up Here</Link>
-          </p>
         </div>
       </div>
-    </AnimatedSection>
+    </div>
   );
 };
 

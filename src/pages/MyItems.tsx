@@ -1,204 +1,273 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AnimatedSection from '../components/AnimatedSection';
+import { authUtils } from '../utils/auth';
+import { useNavigate, Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faSpinner,
+  faBoxOpen,
+  faPlus,
+  faTrash,
+  faEdit,
+  faExclamationTriangle
+} from '@fortawesome/free-solid-svg-icons';
+import itemService from '../services/itemService';
 import ProductCard from '../components/ProductCard';
 import Pagination from '../components/Pagination';
-import ProtectedRoute from '../components/ProtectedRoute';
-import { Item, ItemStatus, Pagination as PaginationType } from '../types';
-import itemService from '../services/itemService';
-import { handleApiError } from '../utils/errorHandler';
-import { showToast } from '../utils/toast';
+import { toastUtils } from '../utils/toast';
+import type { Item, ItemSearchParams } from '../types';
+import { ItemStatus } from '../types';
 
 const MyItems = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Item[]>([]);
-  const [pagination, setPagination] = useState<PaginationType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ItemStatus | 'all'>('all');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false,
+  });
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
-  const fetchItems = useCallback(async () => {
+  // Check authentication
+  useEffect(() => {
+    if (!authUtils.isLoggedIn()) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // Fetch user's items
+  const fetchMyItems = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const params = {
-        status: activeTab !== 'all' ? activeTab : undefined,
-        page: currentPage,
-        size: 20
+      const params: ItemSearchParams = {
+        page: pagination.page,
+        size: pagination.size,
+        // Don't filter by status - show all user's items (active, sold, etc.)
       };
 
       const response = await itemService.getMyItems(params);
       setItems(response.items);
       setPagination(response.pagination);
-    } catch (error) {
-      showToast(handleApiError(error));
+    } catch (error: any) {
+      toastUtils.showApiError(error);
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, currentPage]);
+  }, [pagination.page, pagination.size]);
 
+  // Fetch items on mount and when pagination changes
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    fetchMyItems();
+  }, [fetchMyItems]);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
+  // Handle delete item
   const handleDelete = async (itemId: number) => {
-    if (!confirm('Are you sure you want to delete this item?')) {
-      return;
-    }
-
+    setDeletingItemId(itemId);
     try {
       await itemService.deleteItem(itemId);
-      showToast('Item deleted successfully');
-      fetchItems();
-    } catch (error) {
-      showToast(handleApiError(error));
+      toastUtils.success('Item deleted successfully');
+      // Refresh the list
+      fetchMyItems();
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      if (error.response?.status === 403) {
+        toastUtils.error('You can only delete your own items');
+      } else if (error.response?.status === 404) {
+        toastUtils.error('Item not found');
+      } else {
+        toastUtils.showApiError(error);
+      }
+    } finally {
+      setDeletingItemId(null);
+      setShowDeleteConfirm(null);
     }
   };
 
-  // Calculate tab counts from current items (could be improved with API support)
-  const tabs = [
-    { key: 'all' as const, label: 'All', count: pagination?.totalElements || items.length },
-    { key: ItemStatus.ACTIVE, label: 'Active', count: activeTab === ItemStatus.ACTIVE ? (pagination?.totalElements || items.length) : items.filter(i => i.status === ItemStatus.ACTIVE).length },
-    { key: ItemStatus.SOLD, label: 'Sold', count: activeTab === ItemStatus.SOLD ? (pagination?.totalElements || items.length) : items.filter(i => i.status === ItemStatus.SOLD).length },
-    { key: ItemStatus.INACTIVE, label: 'Inactive', count: activeTab === ItemStatus.INACTIVE ? (pagination?.totalElements || items.length) : items.filter(i => i.status === ItemStatus.INACTIVE).length }
-  ];
-
   return (
-    <ProtectedRoute>
-      <AnimatedSection className="products">
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h2>My Items</h2>
-            <button
-              onClick={() => navigate('/items/create')}
-              className="btn-primary-modern"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              + Create New Item
-            </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-h1 font-heading font-bold text-gray-900 mb-2">
+              My Items
+            </h1>
+            <p className="text-body text-gray-600 font-body">
+              Manage all your posted items
+            </p>
           </div>
+          <Link
+            to="/products/create"
+            className="inline-flex items-center justify-center px-6 py-3 bg-royal-blue text-white rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 transition-all duration-300 hover:shadow-lg whitespace-nowrap"
+          >
+            <FontAwesomeIcon icon={faPlus} className="mr-2" />
+            Create New Item
+          </Link>
+        </div>
 
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setActiveTab(tab.key);
-                  setCurrentPage(0);
-                }}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: activeTab === tab.key ? 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))' : 'var(--glass-bg)',
-                  border: `1px solid ${activeTab === tab.key ? 'transparent' : 'var(--glass-border)'}`,
-                  borderRadius: '12px',
-                  color: activeTab === tab.key ? 'var(--dark-bg)' : 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontWeight: activeTab === tab.key ? 600 : 400,
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <span>{tab.label}</span>
-                <span style={{
-                  background: activeTab === tab.key ? 'rgba(5, 5, 12, 0.2)' : 'rgba(162, 155, 254, 0.2)',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '12px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600
-                }}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {loading ? (
-            <div className="empty-state-modern">
-              <div className="empty-icon">⏳</div>
-              <h3>Loading your items...</h3>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="empty-state-modern">
-              <div className="empty-icon">📦</div>
-              <h3>No items found</h3>
-              <p>
-                {activeTab === 'all'
-                  ? "You haven't listed any items yet. Create your first listing!"
-                  : `You don't have any ${activeTab.toLowerCase()} items.`}
+        {/* Results Header */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-body font-body text-gray-600">
+                {loading ? (
+                  'Loading...'
+                ) : (
+                  <>
+                    You have <span className="font-semibold text-gray-900">{pagination.totalElements}</span> item{pagination.totalElements !== 1 ? 's' : ''}
+                  </>
+                )}
               </p>
-              {activeTab === 'all' && (
-                <button
-                  onClick={() => navigate('/items/create')}
-                  className="btn-primary"
-                  style={{ marginTop: '1rem' }}
-                >
-                  Create Your First Item
-                </button>
-              )}
             </div>
-          ) : (
-            <>
-              <div className="products-grid-modern">
-                {items.map((item) => (
-                  <div key={item.id} style={{ position: 'relative' }}>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <FontAwesomeIcon
+              icon={faSpinner}
+              className="text-4xl text-royal-blue animate-spin"
+            />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && items.length === 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <FontAwesomeIcon
+              icon={faBoxOpen}
+              className="text-6xl text-gray-300 mb-4"
+            />
+            <h3 className="text-h3 font-heading font-semibold text-gray-900 mb-2">
+              No items yet
+            </h3>
+            <p className="text-body text-gray-600 font-body mb-6">
+              Start selling by creating your first item listing
+            </p>
+            <Link
+              to="/products/create"
+              className="inline-flex items-center justify-center px-6 py-3 bg-royal-blue text-white rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 transition-all duration-300 hover:shadow-lg"
+            >
+              <FontAwesomeIcon icon={faPlus} className="mr-2" />
+              Create Your First Item
+            </Link>
+          </div>
+        )}
+
+        {/* Items Grid */}
+        {!loading && items.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {items.map((item) => (
+                <div key={item.id} className="relative group">
+                  <Link to={`/items/${item.id}`} className="block">
                     <ProductCard item={item} />
-                    <div style={{
-                      position: 'absolute',
-                      top: '1rem',
-                      right: '1rem',
-                      display: 'flex',
-                      gap: '0.5rem',
-                      zIndex: 10
-                    }}>
-                      <button
-                        onClick={() => navigate(`/items/${item.id}/edit`)}
-                        style={{
-                          background: 'rgba(162, 155, 254, 0.9)',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '0.5rem',
-                          cursor: 'pointer',
-                          color: '#05050C',
-                          fontSize: '1rem'
-                        }}
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        style={{
-                          background: 'rgba(255, 107, 107, 0.9)',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '0.5rem',
-                          cursor: 'pointer',
-                          color: '#05050C',
-                          fontSize: '1rem'
-                        }}
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
+                  </Link>
+                  {/* Status Badge */}
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className={`px-3 py-1 rounded-full text-body-sm font-heading font-semibold ${
+                      item.status === ItemStatus.ACTIVE
+                        ? 'bg-green-100 text-green-800'
+                        : item.status === ItemStatus.SOLD
+                        ? 'bg-gray-100 text-gray-800'
+                        : item.status === ItemStatus.PENDING
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {item.status}
+                    </span>
+                  </div>
+                  {/* Action Buttons */}
+                  <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Link
+                      to={`/items/${item.id}/edit`}
+                      className="w-10 h-10 bg-royal-blue text-white rounded-full flex items-center justify-center hover:bg-royal-blue-600 transition-colors shadow-lg"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Edit item"
+                    >
+                      <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowDeleteConfirm(item.id);
+                      }}
+                      className="w-10 h-10 bg-coral text-white rounded-full flex items-center justify-center hover:bg-coral-600 transition-colors shadow-lg"
+                      title="Delete item"
+                    >
+                      <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-coral-100 rounded-full flex items-center justify-center">
+                      <FontAwesomeIcon icon={faExclamationTriangle} className="text-coral text-xl" />
+                    </div>
+                    <div>
+                      <h3 className="text-h3 font-heading font-bold text-gray-900">Delete Item</h3>
+                      <p className="text-body-sm text-gray-600 font-body">This action cannot be undone.</p>
                     </div>
                   </div>
-                ))}
+                  <p className="text-body text-gray-700 font-body mb-6">
+                    Are you sure you want to delete this item? This will permanently remove it from the marketplace.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDeleteConfirm(null)}
+                      disabled={deletingItemId !== null}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-heading font-semibold text-button hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleDelete(showDeleteConfirm)}
+                      disabled={deletingItemId !== null}
+                      className="flex-1 px-4 py-2 bg-coral text-white rounded-md font-heading font-semibold text-button hover:bg-coral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {deletingItemId === showDeleteConfirm ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} spin />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon icon={faTrash} />
+                          Delete
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              {pagination && pagination.totalPages > 1 && (
-                <Pagination pagination={pagination} onPageChange={handlePageChange} />
-              )}
-            </>
-          )}
-        </div>
-      </AnimatedSection>
-    </ProtectedRoute>
+            )}
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <Pagination pagination={pagination} onPageChange={handlePageChange} />
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 

@@ -1,272 +1,663 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AnimatedSection from '../components/AnimatedSection';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faUser,
+  faEnvelope,
+  faIdCard,
+  faPhone,
+  faEdit,
+  faSave,
+  faTimes,
+  faCamera,
+  faSpinner,
+  faBox,
+  faCheckCircle,
+  faDollarSign,
+  faChartLine,
+  faUserCircle
+} from '@fortawesome/free-solid-svg-icons';
 import { authUtils } from '../utils/auth';
-import { User } from '../types';
-import userService from '../services/userService';
-import { handleApiError } from '../utils/errorHandler';
+import userService, { type UpdateProfileData, type UserProfile } from '../services/userService';
+import { toastUtils } from '../utils/toast';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form states
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    phone: ''
+    phone: '',
   });
 
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const profile = await userService.getCurrentUserProfile();
-      setUser(profile);
-      setEditData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        phone: profile.phone || ''
-      });
-      // Update stored user data
-      authUtils.setCurrentUser(profile);
-    } catch (err) {
-      setError(handleApiError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Image upload states
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState('');
+
+  // Check authentication
   useEffect(() => {
     if (!authUtils.isLoggedIn()) {
       navigate('/login');
-      return;
     }
-
-    fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  const handleUpdateProfile = async () => {
-    try {
-      const updated = await userService.updateProfile(editData);
-      setUser(updated);
-      authUtils.setCurrentUser(updated);
-      setEditing(false);
-      alert('Profile updated successfully!');
-    } catch (err) {
-      alert(handleApiError(err));
+  // Fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await userService.getCurrentProfile();
+        setProfile(data);
+        setFormData({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone || '',
+        });
+      } catch (error: any) {
+        toastUtils.showApiError(error, 'Failed to load profile');
+        navigate('/products');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (authUtils.isLoggedIn()) {
+      fetchProfile();
+    }
+  }, [navigate]);
+
+  // Validation
+  const validateFirstName = (firstName: string): string | undefined => {
+    if (!firstName.trim()) {
+      return 'First name is required';
+    }
+    if (firstName.trim().length < 1) {
+      return 'First name must be at least 1 character';
+    }
+    if (firstName.trim().length > 100) {
+      return 'First name must be 100 characters or less';
+    }
+    return undefined;
+  };
+
+  const validateLastName = (lastName: string): string | undefined => {
+    if (!lastName.trim()) {
+      return 'Last name is required';
+    }
+    if (lastName.trim().length < 1) {
+      return 'Last name must be at least 1 character';
+    }
+    if (lastName.trim().length > 100) {
+      return 'Last name must be 100 characters or less';
+    }
+    return undefined;
+  };
+
+  const validatePhone = (phone: string): string | undefined => {
+    if (!phone.trim()) {
+      return undefined; // Phone is optional
+    }
+    if (phone.trim().length > 20) {
+      return 'Phone number must be 20 characters or less';
+    }
+    // Phone pattern: ^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$
+    const phonePattern = /^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$/;
+    if (!phonePattern.test(phone.trim())) {
+      return 'Please enter a valid phone number';
+    }
+    return undefined;
+  };
+
+  const validateField = (name: string, value: string): boolean => {
+    let error: string | undefined;
+
+    switch (name) {
+      case 'firstName':
+        error = validateFirstName(value);
+        break;
+      case 'lastName':
+        error = validateLastName(value);
+        break;
+      case 'phone':
+        error = validatePhone(value);
+        break;
+    }
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: error,
+    }));
+
+    return !error;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (touched[name]) {
+      validateField(name, value);
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+    validateField(name, value);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setErrors({});
+    setTouched({});
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (profile) {
+      setFormData({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone || '',
+      });
+    }
+    setErrors({});
+    setTouched({});
+  };
+
+  const handleSave = async () => {
+    // Mark all fields as touched
+    const allFields = ['firstName', 'lastName', 'phone'];
+    allFields.forEach((field) => {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+      validateField(field, formData[field as keyof typeof formData]);
+    });
+
+    // Check if form is valid
+    const isValid = allFields.every((field) => {
+      const fieldError = errors[field];
+      if (fieldError) return false;
+      return validateField(field, formData[field as keyof typeof formData]);
+    });
+
+    if (!isValid) {
+      toastUtils.error('Please correct the errors in the form');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updateData: UpdateProfileData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+      };
+
+      if (formData.phone.trim()) {
+        updateData.phone = formData.phone.trim();
+      }
+
+      const updatedProfile = await userService.updateProfile(updateData);
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      toastUtils.success('Profile updated successfully!');
+    } catch (error: any) {
+      toastUtils.showApiError(error, 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+    setImageError('');
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setImageError('Please select a valid image file (JPEG, PNG, WEBP, or GIF)');
+      setSelectedImage(null);
+      setImagePreview(null);
       return;
     }
 
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setImageError('Image size must be less than 5MB');
+      setSelectedImage(null);
+      setImagePreview(null);
+      return;
+    }
+
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage) return;
+
+    setIsUploading(true);
     try {
-      const updated = await userService.uploadProfileImage(file);
-      setUser(updated);
-      authUtils.setCurrentUser(updated);
-      alert('Profile image updated successfully!');
-    } catch (err) {
-      alert(handleApiError(err));
+      const updatedProfile = await userService.uploadProfileImage(selectedImage);
+      setProfile(updatedProfile);
+      setSelectedImage(null);
+      setImagePreview(null);
+      toastUtils.success('Profile image uploaded successfully!');
+    } catch (error: any) {
+      toastUtils.showApiError(error, 'Failed to upload image');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      authUtils.logout();
-      navigate('/logout');
+  const handleRemoveImagePreview = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImageError('');
+    const fileInput = document.getElementById('profile-image') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   if (loading) {
     return (
-      <AnimatedSection className="products">
-        <h2>Your Account</h2>
-        <div className="products-grid" style={{ maxWidth: '600px', margin: '0 auto', gridTemplateColumns: '1fr' }}>
-          <div className="product-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-            <p>Loading...</p>
-          </div>
-        </div>
-      </AnimatedSection>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <FontAwesomeIcon icon={faSpinner} className="text-4xl text-royal-blue animate-spin" />
+      </div>
     );
   }
 
-  if (error || !user) {
-    return (
-      <AnimatedSection className="products">
-        <h2>Your Account</h2>
-        <div className="products-grid" style={{ maxWidth: '600px', margin: '0 auto', gridTemplateColumns: '1fr' }}>
-          <div className="product-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-            <p style={{ color: '#FF6B6B' }}>{error || 'Failed to load profile'}</p>
-            <button onClick={fetchProfile} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#A29BFE', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-              Retry
-            </button>
-          </div>
-        </div>
-      </AnimatedSection>
-    );
+  if (!profile) {
+    return null;
   }
-
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-  const initials = (user.firstName?.[0] || user.email?.[0] || 'U').toUpperCase();
 
   return (
-    <AnimatedSection className="products">
-      <h2>Your Account</h2>
-      <div className="products-grid" style={{ maxWidth: '900px', margin: '0 auto', gridTemplateColumns: '1fr' }}>
-        {/* Profile Header */}
-        <div className="product-card" style={{ padding: '2rem', marginBottom: '1.5rem' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem' }}>
-              {user.profileImageUrl ? (
-                <img 
-                  src={user.profileImageUrl} 
-                  alt={name}
-                  style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover' }}
-                />
-              ) : (
-                <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'linear-gradient(135deg, #A29BFE, #6C5CE7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: 'white', fontWeight: 'bold', margin: '0 auto' }}>
-                  {initials}
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-h1 font-heading font-bold text-gray-900 mb-2">
+            My Profile
+          </h1>
+          <p className="text-body text-gray-600 font-body">
+            Manage your profile information and view your trading statistics
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Profile Info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Profile Card */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-royal-blue to-royal-blue-600 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-h3 font-heading font-bold text-white">
+                    Profile Information
+                  </h2>
+                  {!isEditing && (
+                    <button
+                      onClick={handleEdit}
+                      className="text-white/90 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                      <span className="text-body-sm font-body">Edit</span>
+                    </button>
+                  )}
                 </div>
-              )}
-              <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#A29BFE', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid #05050C' }}>
-                📷
-                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-              </label>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Profile Image */}
+                <div className="flex flex-col items-center">
+                  <div className="relative">
+                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-royal-blue-100 bg-gray-100 flex items-center justify-center">
+                      {profile.profileImageUrl ? (
+                        <img
+                          src={profile.profileImageUrl}
+                          alt={`${profile.firstName} ${profile.lastName}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FontAwesomeIcon icon={faUserCircle} className="text-6xl text-gray-400" />
+                      )}
+                    </div>
+                    {!isEditing && (
+                      <label
+                        htmlFor="profile-image"
+                        className="absolute bottom-0 right-0 bg-royal-blue text-white p-3 rounded-full cursor-pointer hover:bg-royal-blue-600 transition-colors shadow-lg"
+                        title="Change profile picture"
+                      >
+                        <FontAwesomeIcon icon={faCamera} />
+                        <input
+                          type="file"
+                          id="profile-image"
+                          accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Image Upload Preview */}
+                  {imagePreview && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 w-full max-w-md">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <p className="text-body-sm font-body text-gray-700 mb-1">
+                            {selectedImage?.name}
+                          </p>
+                          <p className="text-body-sm text-gray-500 font-body">
+                            {(selectedImage?.size ? selectedImage.size / 1024 / 1024 : 0).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleImageUpload}
+                            disabled={isUploading}
+                            className="px-4 py-2 bg-royal-blue text-white rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {isUploading ? (
+                              <>
+                                <FontAwesomeIcon icon={faSpinner} spin />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <FontAwesomeIcon icon={faSave} />
+                                Upload
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleRemoveImagePreview}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md font-heading font-semibold text-button hover:bg-gray-300 transition-colors"
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                          </button>
+                        </div>
+                      </div>
+                      {imageError && (
+                        <p className="mt-2 text-body-sm text-coral font-body">{imageError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  {/* First Name */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faUser} className="text-royal-blue" />
+                      First Name
+                    </label>
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          className={`w-full px-4 py-3 border-2 rounded-lg font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
+                            errors.firstName && touched.firstName
+                              ? 'border-coral'
+                              : 'border-gray-200'
+                          }`}
+                        />
+                        {errors.firstName && touched.firstName && (
+                          <p className="mt-1 text-body-sm text-coral font-body">{errors.firstName}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                        {profile.firstName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faUser} className="text-royal-blue" />
+                      Last Name
+                    </label>
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          className={`w-full px-4 py-3 border-2 rounded-lg font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
+                            errors.lastName && touched.lastName
+                              ? 'border-coral'
+                              : 'border-gray-200'
+                          }`}
+                        />
+                        {errors.lastName && touched.lastName && (
+                          <p className="mt-1 text-body-sm text-coral font-body">{errors.lastName}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                        {profile.lastName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Email (Read-only) */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faEnvelope} className="text-royal-blue" />
+                      Email
+                    </label>
+                    <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                      {profile.email}
+                    </p>
+                    {profile.emailVerified && (
+                      <p className="mt-1 text-body-sm text-green-600 font-body flex items-center gap-1">
+                        <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                        Email verified
+                      </p>
+                    )}
+                  </div>
+
+                  {/* University ID (Read-only) */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faIdCard} className="text-royal-blue" />
+                      University ID
+                    </label>
+                    <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                      {profile.universityId}
+                    </p>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <FontAwesomeIcon icon={faPhone} className="text-royal-blue" />
+                      Phone Number
+                    </label>
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          placeholder="+1234567890"
+                          className={`w-full px-4 py-3 border-2 rounded-lg font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
+                            errors.phone && touched.phone
+                              ? 'border-coral'
+                              : 'border-gray-200'
+                          }`}
+                        />
+                        {errors.phone && touched.phone && (
+                          <p className="mt-1 text-body-sm text-coral font-body">{errors.phone}</p>
+                        )}
+                        <p className="mt-1 text-body-sm text-gray-500 font-body">
+                          Optional - Enter your phone number
+                        </p>
+                      </>
+                    ) : (
+                      <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                        {profile.phone || 'Not provided'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Role (Read-only) */}
+                  <div>
+                    <label className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                      Role
+                    </label>
+                    <p className="px-4 py-3 bg-gray-50 rounded-lg font-body text-body text-gray-900">
+                      {profile.role}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                {isEditing && (
+                  <div className="flex gap-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex-1 px-6 py-3 bg-royal-blue text-white rounded-lg font-heading font-semibold text-button hover:bg-royal-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isSaving ? (
+                        <>
+                          <FontAwesomeIcon icon={faSpinner} spin />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon icon={faSave} />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-heading font-semibold text-button hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            <h3 style={{ color: '#A29BFE', marginBottom: '0.5rem', fontSize: '1.5rem' }}>{name}</h3>
-            <p style={{ color: '#B8BCD0' }}>{user.email}</p>
-            <p style={{ color: '#B8BCD0', fontSize: '0.9rem', marginTop: '0.25rem' }}>ID: {user.universityId}</p>
           </div>
 
-          {/* Statistics */}
-          {user.statistics && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(162,155,254,0.16)' }}>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(162,155,254,0.1)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#A29BFE', marginBottom: '0.25rem' }}>{user.statistics.totalItems}</div>
-                <div style={{ fontSize: '0.85rem', color: '#B8BCD0' }}>Total Items</div>
+          {/* Right Column - Statistics */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden sticky top-24">
+              <div className="bg-gradient-to-r from-royal-blue to-royal-blue-600 px-6 py-4">
+                <h2 className="text-h3 font-heading font-bold text-white flex items-center gap-2">
+                  <FontAwesomeIcon icon={faChartLine} />
+                  Statistics
+                </h2>
               </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(162,155,254,0.1)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#A29BFE', marginBottom: '0.25rem' }}>{user.statistics.activeItems}</div>
-                <div style={{ fontSize: '0.85rem', color: '#B8BCD0' }}>Active</div>
-              </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(162,155,254,0.1)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#A29BFE', marginBottom: '0.25rem' }}>{user.statistics.soldItems}</div>
-                <div style={{ fontSize: '0.85rem', color: '#B8BCD0' }}>Sold</div>
-              </div>
-              <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(162,155,254,0.1)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#A29BFE', marginBottom: '0.25rem' }}>₹{user.statistics.totalValue.toLocaleString()}</div>
-                <div style={{ fontSize: '0.85rem', color: '#B8BCD0' }}>Total Value</div>
-              </div>
-            </div>
-          )}
 
-          {/* Profile Information */}
-          <div style={{ borderTop: '1px solid rgba(162,155,254,0.16)', paddingTop: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h4 style={{ color: '#A29BFE', fontSize: '1.1rem' }}>Profile Information</h4>
-              {!editing && (
-                <button onClick={() => setEditing(true)} style={{ background: 'transparent', border: '1px solid #A29BFE', color: '#A29BFE', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  Edit
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', color: '#B8BCD0', marginBottom: '0.5rem', fontSize: '0.9rem' }}>First Name</label>
-                {editing ? (
-                  <input
-                    type="text"
-                    value={editData.firstName}
-                    onChange={(e) => setEditData({ ...editData, firstName: e.target.value })}
-                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.16)', borderRadius: '8px', color: '#F5F6FC' }}
-                  />
-                ) : (
-                  <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#F5F6FC' }}>
-                    {user.firstName || 'Not provided'}
+              <div className="p-6 space-y-4">
+                {/* Total Items */}
+                <div className="p-4 bg-gradient-to-br from-royal-blue-50 to-royal-blue-100 rounded-lg border border-royal-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faBox} className="text-royal-blue" />
+                      <span className="text-body-sm font-body font-medium text-gray-700">Total Items</span>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div>
-                <label style={{ display: 'block', color: '#B8BCD0', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Last Name</label>
-                {editing ? (
-                  <input
-                    type="text"
-                    value={editData.lastName}
-                    onChange={(e) => setEditData({ ...editData, lastName: e.target.value })}
-                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.16)', borderRadius: '8px', color: '#F5F6FC' }}
-                  />
-                ) : (
-                  <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#F5F6FC' }}>
-                    {user.lastName || 'Not provided'}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={{ display: 'block', color: '#B8BCD0', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Email</label>
-                <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#B8BCD0' }}>
-                  {user.email} (read-only)
+                  <p className="text-h2 font-heading font-bold text-royal-blue">
+                    {profile.statistics.totalItems}
+                  </p>
                 </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: '#B8BCD0', marginBottom: '0.5rem', fontSize: '0.9rem' }}>University ID</label>
-                <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#B8BCD0' }}>
-                  {user.universityId} (read-only)
-                </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', color: '#B8BCD0', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Phone</label>
-                {editing ? (
-                  <input
-                    type="tel"
-                    value={editData.phone}
-                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(162,155,254,0.16)', borderRadius: '8px', color: '#F5F6FC' }}
-                  />
-                ) : (
-                  <div style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#F5F6FC' }}>
-                    {user.phone || 'Not provided'}
-                  </div>
-                )}
-              </div>
-              {editing && (
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <button onClick={handleUpdateProfile} style={{ flex: 1, background: 'linear-gradient(135deg, #A29BFE, #6C5CE7)', color: '#05050C', border: 'none', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
-                    Save
-                  </button>
-                  <button onClick={() => { setEditing(false); setEditData({ firstName: user.firstName || '', lastName: user.lastName || '', phone: user.phone || '' }); }} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(162,155,254,0.16)', color: '#B8BCD0', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer' }}>
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* Actions */}
-          <div style={{ borderTop: '1px solid rgba(162,155,254,0.16)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-            <button onClick={handleLogout} style={{ background: 'linear-gradient(135deg, #A29BFE, #6C5CE7)', color: '#05050C', border: 'none', width: '100%', padding: '0.75rem', fontSize: '1rem', cursor: 'pointer', borderRadius: '25px', fontWeight: '600', marginBottom: '0.75rem' }}>
-              Logout
-            </button>
-            <button onClick={() => navigate('/')} style={{ background: 'transparent', border: '1px solid rgba(162,155,254,0.16)', color: '#B8BCD0', width: '100%', padding: '0.75rem', borderRadius: '25px', cursor: 'pointer' }}>
-              Back to Home
-            </button>
+                {/* Active Items */}
+                <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-green-600" />
+                      <span className="text-body-sm font-body font-medium text-gray-700">Active Items</span>
+                    </div>
+                  </div>
+                  <p className="text-h2 font-heading font-bold text-green-600">
+                    {profile.statistics.activeItems}
+                  </p>
+                </div>
+
+                {/* Sold Items */}
+                <div className="p-4 bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg border border-teal-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-teal" />
+                      <span className="text-body-sm font-body font-medium text-gray-700">Sold Items</span>
+                    </div>
+                  </div>
+                  <p className="text-h2 font-heading font-bold text-teal">
+                    {profile.statistics.soldItems}
+                  </p>
+                </div>
+
+                {/* Total Sales */}
+                <div className="p-4 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faDollarSign} className="text-amber" />
+                      <span className="text-body-sm font-body font-medium text-gray-700">Total Sales</span>
+                    </div>
+                  </div>
+                  <p className="text-h2 font-heading font-bold text-amber">
+                    {formatCurrency(profile.statistics.totalSales)}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </AnimatedSection>
+    </div>
   );
 };
 

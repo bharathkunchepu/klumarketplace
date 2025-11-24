@@ -1,43 +1,119 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { ToastContainer } from 'react-toastify';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Cart from './pages/Cart';
-import Profile from './pages/Profile';
-import Logout from './pages/Logout';
-import ItemDetail from './pages/ItemDetail';
+import Products from './pages/Products';
 import CreateItem from './pages/CreateItem';
-import EditItem from './pages/EditItem';
 import MyItems from './pages/MyItems';
-import UserProfile from './pages/UserProfile';
+import Profile from './pages/Profile';
+import ItemDetail from './pages/ItemDetail';
+import EditItem from './pages/EditItem';
+import { authUtils } from './utils/auth';
 import './App.css';
 
 function App() {
+  // Auto-redirect to products if token exists on app load
+  useEffect(() => {
+    if (authUtils.isLoggedIn()) {
+      const currentPath = window.location.pathname;
+      // Only redirect if on login or signup pages
+      if (currentPath === '/login' || currentPath === '/signup') {
+        window.location.href = '/products';
+      }
+    }
+  }, []);
+
   return (
     <Router>
-      <div className="App">
+      <div className="min-h-screen flex flex-col relative">
         <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/items/:id" element={<ItemDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/logout" element={<Logout />} />
-          <Route path="/items/create" element={<ProtectedRoute><CreateItem /></ProtectedRoute>} />
-          <Route path="/items/:id/edit" element={<ProtectedRoute><EditItem /></ProtectedRoute>} />
-          <Route path="/my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
-          <Route path="/users/:id/profile" element={<UserProfile />} />
-        </Routes>
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route 
+              path="/login" 
+              element={
+                <ProtectedRoute requireAuth={false}>
+                  <Login />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/signup" 
+              element={
+                <ProtectedRoute requireAuth={false}>
+                  <Signup />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/products" 
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <Products />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/products/create" 
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <CreateItem />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/my-items" 
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <MyItems />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/items/:id" 
+              element={<ItemDetail />} 
+            />
+            <Route 
+              path="/items/:id/edit" 
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <EditItem />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
         <Footer />
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </div>
     </Router>
   );
 }
 
 export default App;
-

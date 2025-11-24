@@ -1,4 +1,6 @@
-import { Pagination as PaginationType } from '../types';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import type { Pagination as PaginationType } from '../types';
 
 interface PaginationProps {
   pagination: PaginationType;
@@ -12,112 +14,132 @@ const Pagination = ({ pagination, onPageChange }: PaginationProps) => {
     return null;
   }
 
+  const handlePrevious = () => {
+    if (hasPrevious) {
+      onPageChange(page - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (hasNext) {
+      onPageChange(page + 1);
+    }
+  };
+
+  const handlePageClick = (pageNum: number) => {
+    if (pageNum >= 0 && pageNum < totalPages) {
+      onPageChange(pageNum);
+    }
+  };
+
+  // Generate page numbers to show
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
+      // Show all pages
       for (let i = 0; i < totalPages; i++) {
         pages.push(i);
       }
     } else {
-      if (page < 3) {
-        for (let i = 0; i < 4; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages - 1);
-      } else if (page > totalPages - 4) {
-        pages.push(0);
-        pages.push('...');
-        for (let i = totalPages - 4; i < totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(0);
-        pages.push('...');
-        for (let i = page - 1; i <= page + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages - 1);
+      // Show first page
+      pages.push(0);
+
+      // Calculate start and end
+      let start = Math.max(1, page - 1);
+      let end = Math.min(totalPages - 2, page + 1);
+
+      // Adjust if near start
+      if (page <= 2) {
+        end = 3;
       }
+
+      // Adjust if near end
+      if (page >= totalPages - 3) {
+        start = totalPages - 4;
+      }
+
+      // Add ellipsis if needed
+      if (start > 1) {
+        pages.push('...');
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      // Add ellipsis if needed
+      if (end < totalPages - 2) {
+        pages.push('...');
+      }
+
+      // Show last page
+      pages.push(totalPages - 1);
     }
 
     return pages;
   };
 
   return (
-    <div className="pagination-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '2rem', flexWrap: 'wrap' }}>
+    <div className="flex items-center justify-center gap-2 mt-8">
+      {/* Previous Button */}
       <button
-        onClick={() => onPageChange(page - 1)}
+        onClick={handlePrevious}
         disabled={!hasPrevious}
-        className="pagination-button"
-        style={{
-          padding: '0.5rem 1rem',
-          background: hasPrevious ? 'var(--glass-bg)' : 'rgba(0, 0, 0, 0.2)',
-          border: `1px solid ${hasPrevious ? 'var(--glass-border)' : 'transparent'}`,
-          borderRadius: '8px',
-          color: hasPrevious ? 'var(--text-primary)' : 'var(--text-secondary)',
-          cursor: hasPrevious ? 'pointer' : 'not-allowed',
-          fontSize: '0.9rem',
-          transition: 'all 0.3s ease',
-        }}
+        className={`px-4 py-2 rounded-md font-heading font-semibold text-button transition-all duration-200 ${
+          hasPrevious
+            ? 'bg-royal-blue text-white hover:bg-royal-blue-600 hover:shadow-md'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+        }`}
       >
+        <FontAwesomeIcon icon={faChevronLeft} className="mr-1" />
         Previous
       </button>
 
-      {getPageNumbers().map((pageNum, index) => {
-        if (pageNum === '...') {
+      {/* Page Numbers */}
+      <div className="flex items-center gap-1">
+        {getPageNumbers().map((pageNum, index) => {
+          if (pageNum === '...') {
+            return (
+              <span key={`ellipsis-${index}`} className="px-2 text-gray-400 font-body">
+                ...
+              </span>
+            );
+          }
+
+          const pageNumber = pageNum as number;
+          const isActive = pageNumber === page;
+
           return (
-            <span key={`ellipsis-${index}`} style={{ color: 'var(--text-secondary)', padding: '0 0.5rem' }}>
-              ...
-            </span>
+            <button
+              key={pageNumber}
+              onClick={() => handlePageClick(pageNumber)}
+              className={`w-10 h-10 rounded-md font-heading font-semibold text-button transition-all duration-200 ${
+                isActive
+                  ? 'bg-royal-blue text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:bg-royal-blue-50 hover:text-royal-blue border border-gray-200'
+              }`}
+            >
+              {pageNumber + 1}
+            </button>
           );
-        }
+        })}
+      </div>
 
-        const pageIndex = pageNum as number;
-        const isActive = pageIndex === page;
-
-        return (
-          <button
-            key={pageIndex}
-            onClick={() => onPageChange(pageIndex)}
-            className={`pagination-button ${isActive ? 'active' : ''}`}
-            style={{
-              padding: '0.5rem 1rem',
-              background: isActive ? 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))' : 'var(--glass-bg)',
-              border: `1px solid ${isActive ? 'transparent' : 'var(--glass-border)'}`,
-              borderRadius: '8px',
-              color: isActive ? 'var(--dark-bg)' : 'var(--text-primary)',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: isActive ? 600 : 400,
-              transition: 'all 0.3s ease',
-              minWidth: '40px',
-            }}
-          >
-            {pageIndex + 1}
-          </button>
-        );
-      })}
-
+      {/* Next Button */}
       <button
-        onClick={() => onPageChange(page + 1)}
+        onClick={handleNext}
         disabled={!hasNext}
-        className="pagination-button"
-        style={{
-          padding: '0.5rem 1rem',
-          background: hasNext ? 'var(--glass-bg)' : 'rgba(0, 0, 0, 0.2)',
-          border: `1px solid ${hasNext ? 'var(--glass-border)' : 'transparent'}`,
-          borderRadius: '8px',
-          color: hasNext ? 'var(--text-primary)' : 'var(--text-secondary)',
-          cursor: hasNext ? 'pointer' : 'not-allowed',
-          fontSize: '0.9rem',
-          transition: 'all 0.3s ease',
-        }}
+        className={`px-4 py-2 rounded-md font-heading font-semibold text-button transition-all duration-200 ${
+          hasNext
+            ? 'bg-royal-blue text-white hover:bg-royal-blue-600 hover:shadow-md'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+        }`}
       >
         Next
+        <FontAwesomeIcon icon={faChevronRight} className="ml-1" />
       </button>
     </div>
   );

@@ -1,140 +1,253 @@
-import { useState, FormEvent, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEnvelope, faLock, faUser, faIdCard, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { authUtils } from '../utils/auth';
-import { SignupData } from '../types';
-import { 
-  validateEmail, 
-  validatePassword, 
-  validateName, 
-  validatePhone, 
-  validateConfirmPassword, 
-  validateUniversityId,
-  getPasswordStrength 
-} from '../utils/validation';
-import AnimatedSection from '../components/AnimatedSection';
+import { toastUtils } from '../utils/toast';
+import { ErrorMessages, extractErrorMessage } from '../utils/errorMessages';
+
+interface FormData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  universityId: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  universityId?: string;
+}
 
 const Signup = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [formData, setFormData] = useState<SignupData>({
-    firstName: '',
-    lastName: '',
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
-    confirmPassword: '',
-    phone: '',
-    universityId: ''
+    firstName: '',
+    lastName: '',
+    universityId: '',
   });
-
-  const [errors, setErrors] = useState<Partial<Record<keyof SignupData, string>>>({});
-  const [touched, setTouched] = useState<Partial<Record<keyof SignupData, boolean>>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Redirect if already logged in
   useEffect(() => {
-    const emailFromQuery = new URLSearchParams(location.search).get('email');
-    if (emailFromQuery) {
-      setFormData(prev => ({ ...prev, email: emailFromQuery }));
+    if (authUtils.isLoggedIn()) {
+      navigate('/products', { replace: true });
     }
-  }, [location]);
+  }, [navigate]);
 
-  const passwordStrength = formData.password ? getPasswordStrength(formData.password) : null;
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return ErrorMessages.VALIDATION.EMAIL_REQUIRED;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return ErrorMessages.VALIDATION.EMAIL_INVALID;
+    }
+    if (!email.endsWith('@kluniversity.edu')) {
+      return ErrorMessages.REGISTRATION.INVALID_EMAIL_DOMAIN;
+    }
+    return undefined;
+  };
 
-  const validateField = (name: keyof SignupData, value: string) => {
-    let result;
-    
+  const validatePassword = (password: string): string | undefined => {
+    if (!password) {
+      return ErrorMessages.VALIDATION.PASSWORD_REQUIRED;
+    }
+    if (password.length < 8) {
+      return ErrorMessages.VALIDATION.PASSWORD_TOO_SHORT;
+    }
+    if (password.length > 100) {
+      return ErrorMessages.VALIDATION.PASSWORD_TOO_LONG;
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return ErrorMessages.VALIDATION.PASSWORD_NO_LOWERCASE;
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return ErrorMessages.VALIDATION.PASSWORD_NO_UPPERCASE;
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return ErrorMessages.VALIDATION.PASSWORD_NO_NUMBER;
+    }
+    return undefined;
+  };
+
+  const validateName = (name: string, fieldName: string): string | undefined => {
+    if (!name.trim()) {
+      return fieldName === 'First name' 
+        ? ErrorMessages.VALIDATION.FIRST_NAME_REQUIRED 
+        : ErrorMessages.VALIDATION.LAST_NAME_REQUIRED;
+    }
+    if (name.trim().length < 2) {
+      return fieldName === 'First name'
+        ? ErrorMessages.VALIDATION.FIRST_NAME_TOO_SHORT
+        : ErrorMessages.VALIDATION.LAST_NAME_TOO_SHORT;
+    }
+    if (name.trim().length > 50) {
+      return fieldName === 'First name'
+        ? ErrorMessages.VALIDATION.FIRST_NAME_TOO_LONG
+        : ErrorMessages.VALIDATION.LAST_NAME_TOO_LONG;
+    }
+    return undefined;
+  };
+
+  const validateUniversityId = (universityId: string): string | undefined => {
+    if (!universityId.trim()) {
+      return ErrorMessages.VALIDATION.UNIVERSITY_ID_REQUIRED;
+    }
+    if (universityId.trim().length > 20) {
+      return ErrorMessages.VALIDATION.UNIVERSITY_ID_TOO_LONG;
+    }
+    return undefined;
+  };
+
+  const validateField = (name: keyof FormData, value: string): boolean => {
+    let error: string | undefined;
+
     switch (name) {
-      case 'firstName':
-        result = validateName(value, 'First name');
-        break;
-      case 'lastName':
-        result = validateName(value, 'Last name');
-        break;
       case 'email':
-        result = validateEmail(value);
-        break;
-      case 'phone':
-        result = validatePhone(value);
+        error = validateEmail(value);
         break;
       case 'password':
-        result = validatePassword(value);
+        error = validatePassword(value);
         break;
-      case 'confirmPassword':
-        result = validateConfirmPassword(formData.password, value);
+      case 'firstName':
+        error = validateName(value, 'First name');
+        break;
+      case 'lastName':
+        error = validateName(value, 'Last name');
         break;
       case 'universityId':
-        result = validateUniversityId(value);
+        error = validateUniversityId(value);
         break;
-      default:
-        result = { isValid: true };
     }
 
-    setErrors(prev => ({
+    setErrors((prev) => ({
       ...prev,
-      [name]: result.error
+      [name]: error,
     }));
 
-    return result.isValid;
+    return !error;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
-    // Real-time validation for touched fields
-    if (touched[name as keyof SignupData]) {
-      validateField(name as keyof SignupData, value);
-    }
-
-    // Special handling for confirm password
-    if (name === 'password' && touched.confirmPassword) {
-      validateField('confirmPassword', formData.confirmPassword);
+    if (touched[name]) {
+      validateField(name as keyof FormData, value);
     }
   };
 
-  const handleBlur = (field: keyof SignupData) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+    }));
+    validateField(name as keyof FormData, value);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+    
     // Mark all fields as touched
-    const allFields: (keyof SignupData)[] = ['firstName', 'lastName', 'email', 'phone', 'universityId', 'password', 'confirmPassword'];
-    allFields.forEach(field => setTouched(prev => ({ ...prev, [field]: true })));
+    const allFields: (keyof FormData)[] = ['email', 'password', 'firstName', 'lastName', 'universityId'];
+    allFields.forEach((field) => {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+      validateField(field, formData[field]);
+    });
 
-    // Validate all fields
-    const validationResults = allFields.map(field => validateField(field, formData[field]));
-    const isValid = validationResults.every(result => result);
+    // Check if form is valid
+    const isValid = allFields.every((field) => {
+      const fieldError = errors[field];
+      if (fieldError) return false;
+      return validateField(field, formData[field]);
+    });
 
-    if (!isValid || !termsAccepted) {
-      if (!termsAccepted) {
-        alert('Please accept the Terms & Conditions to continue.');
-      }
+    if (!isValid) {
       return;
     }
 
     setIsSubmitting(true);
-
     try {
       await authUtils.signup(formData);
-      const redirect = (location.state as { redirect?: string })?.redirect || '/';
-      navigate(redirect, { state: { message: 'Account created successfully!' } });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Signup failed';
-      if (message.includes('already exists')) {
-        setErrors(prev => ({ ...prev, email: message }));
-        setTimeout(() => {
-          navigate('/login', { state: { email: formData.email, redirect: location.state } });
-        }, 2000);
+      toastUtils.showRegistrationSuccess();
+      // If token is received, redirect to products page
+      // Otherwise, redirect to login page
+      if (authUtils.isLoggedIn()) {
+        navigate('/products', { replace: true });
       } else {
-        alert(message);
+        navigate('/login', { replace: true });
+      }
+    } catch (error: any) {
+      const errorMessage = extractErrorMessage(error);
+      const apiMessage = error?.response?.data?.message || errorMessage;
+      
+      // Email already exists - show inline on email field
+      if (apiMessage.toLowerCase().includes('email') && 
+          (apiMessage.toLowerCase().includes('already') || 
+           apiMessage.toLowerCase().includes('exists') ||
+           apiMessage.toLowerCase().includes('registered'))) {
+        setErrors((prev) => ({ 
+          ...prev, 
+          email: apiMessage || ErrorMessages.REGISTRATION.EMAIL_EXISTS 
+        }));
+      }
+      // University ID already exists - show inline on universityId field
+      else if (apiMessage.toLowerCase().includes('university') || 
+               apiMessage.toLowerCase().includes('universityid') ||
+               apiMessage.toLowerCase().includes('university id')) {
+        if (apiMessage.toLowerCase().includes('already') || 
+            apiMessage.toLowerCase().includes('exists')) {
+          setErrors((prev) => ({ 
+            ...prev, 
+            universityId: apiMessage || ErrorMessages.REGISTRATION.UNIVERSITY_ID_EXISTS 
+          }));
+        } else {
+          setErrors((prev) => ({ 
+            ...prev, 
+            universityId: apiMessage || ErrorMessages.REGISTRATION.INVALID_UNIVERSITY_ID 
+          }));
+        }
+      }
+      // Network/server errors - show as toast
+      else if (error?.code === 'ERR_NETWORK' || 
+               error?.message === 'Network Error' ||
+               error?.response?.status >= 500) {
+        toastUtils.showApiError(error);
+      }
+      // Validation errors from backend - show inline
+      else if (error?.response?.status === 400) {
+        // Try to map to specific fields
+        if (apiMessage.toLowerCase().includes('email')) {
+          setErrors((prev) => ({ ...prev, email: apiMessage }));
+        } else if (apiMessage.toLowerCase().includes('password')) {
+          setErrors((prev) => ({ ...prev, password: apiMessage }));
+        } else if (apiMessage.toLowerCase().includes('firstname') || 
+                   apiMessage.toLowerCase().includes('first name')) {
+          setErrors((prev) => ({ ...prev, firstName: apiMessage }));
+        } else if (apiMessage.toLowerCase().includes('lastname') || 
+                   apiMessage.toLowerCase().includes('last name')) {
+          setErrors((prev) => ({ ...prev, lastName: apiMessage }));
+        } else {
+          toastUtils.error(apiMessage || ErrorMessages.REGISTRATION.REGISTRATION_FAILED);
+        }
+      }
+      // Other errors - show as toast
+      else {
+        toastUtils.error(apiMessage || ErrorMessages.REGISTRATION.REGISTRATION_FAILED);
       }
     } finally {
       setIsSubmitting(false);
@@ -142,306 +255,219 @@ const Signup = () => {
   };
 
   return (
-    <AnimatedSection className="auth-section">
-      <div className="auth-container">
-        <div className="auth-card-modern">
-          <div className="auth-header">
-            <div className="auth-icon">🚀</div>
-            <h1>Join KLU Marketplace</h1>
-            <p className="subtitle">Create your account and start trading</p>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-royal-blue to-royal-blue-600 px-8 py-6">
+            <h1 className="text-h1 font-heading font-bold text-white text-center">
+              Create Your Account
+            </h1>
+            <p className="text-body text-white/90 text-center mt-2 font-body">
+              Join KLU Marketplace and start buying and selling today
+            </p>
           </div>
 
-          <form className="auth-form-modern" onSubmit={handleSubmit} noValidate>
-            <div className="form-row-modern">
-              <div className={`form-group-modern ${errors.firstName ? 'error' : touched.firstName && formData.firstName ? 'success' : ''}`}>
-                <label htmlFor="firstname">
-                  First Name <span className="required">*</span>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            {/* First Name and Last Name Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="firstName" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                  First Name <span className="text-coral">*</span>
                 </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">👤</span>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FontAwesomeIcon icon={faUser} className="text-gray-400" />
+                  </div>
                   <input
                     type="text"
-                    id="firstname"
+                    id="firstName"
                     name="firstName"
-                    placeholder="John"
                     value={formData.firstName}
                     onChange={handleChange}
-                    onBlur={() => handleBlur('firstName')}
-                    className={errors.firstName ? 'input-error' : ''}
-                    aria-invalid={!!errors.firstName}
+                    onBlur={handleBlur}
+                    className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${
+                      errors.firstName && touched.firstName
+                        ? 'border-coral focus:ring-coral focus:border-coral'
+                        : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                    } focus:outline-none focus:ring-2`}
+                    placeholder="Enter your first name"
                   />
-                  {touched.firstName && !errors.firstName && formData.firstName && (
-                    <span className="input-success-icon">✓</span>
-                  )}
                 </div>
-                {errors.firstName && (
-                  <span className="error-message-modern" role="alert">{errors.firstName}</span>
+                {errors.firstName && touched.firstName && (
+                  <p className="mt-1 text-body-sm text-coral font-body">{errors.firstName}</p>
                 )}
               </div>
 
-              <div className={`form-group-modern ${errors.lastName ? 'error' : touched.lastName && formData.lastName ? 'success' : ''}`}>
-                <label htmlFor="lastname">
-                  Last Name <span className="required">*</span>
+              <div>
+                <label htmlFor="lastName" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                  Last Name <span className="text-coral">*</span>
                 </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">👤</span>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FontAwesomeIcon icon={faUser} className="text-gray-400" />
+                  </div>
                   <input
                     type="text"
-                    id="lastname"
+                    id="lastName"
                     name="lastName"
-                    placeholder="Doe"
                     value={formData.lastName}
                     onChange={handleChange}
-                    onBlur={() => handleBlur('lastName')}
-                    className={errors.lastName ? 'input-error' : ''}
-                    aria-invalid={!!errors.lastName}
+                    onBlur={handleBlur}
+                    className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${
+                      errors.lastName && touched.lastName
+                        ? 'border-coral focus:ring-coral focus:border-coral'
+                        : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                    } focus:outline-none focus:ring-2`}
+                    placeholder="Enter your last name"
                   />
-                  {touched.lastName && !errors.lastName && formData.lastName && (
-                    <span className="input-success-icon">✓</span>
-                  )}
                 </div>
-                {errors.lastName && (
-                  <span className="error-message-modern" role="alert">{errors.lastName}</span>
+                {errors.lastName && touched.lastName && (
+                  <p className="mt-1 text-body-sm text-coral font-body">{errors.lastName}</p>
                 )}
               </div>
             </div>
 
-            <div className="form-row-modern">
-              <div className={`form-group-modern ${errors.email ? 'error' : touched.email && formData.email ? 'success' : ''}`}>
-                <label htmlFor="email">
-                  Email Address <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">📧</span>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="your.email@klu.edu.in"
-                    value={formData.email}
-                    onChange={handleChange}
-                    onBlur={() => handleBlur('email')}
-                    className={errors.email ? 'input-error' : ''}
-                    aria-invalid={!!errors.email}
-                  />
-                  {touched.email && !errors.email && formData.email && (
-                    <span className="input-success-icon">✓</span>
-                  )}
-                </div>
-                {errors.email && (
-                  <span className="error-message-modern" role="alert">{errors.email}</span>
-                )}
-                {touched.email && !errors.email && formData.email && (
-                  <span className="success-message">Valid KLU email!</span>
-                )}
-              </div>
-
-              <div className={`form-group-modern ${errors.phone ? 'error' : touched.phone && formData.phone ? 'success' : ''}`}>
-                <label htmlFor="phone">
-                  Phone Number <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">📱</span>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    placeholder="9876543210"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    onBlur={() => handleBlur('phone')}
-                    className={errors.phone ? 'input-error' : ''}
-                    aria-invalid={!!errors.phone}
-                    maxLength={10}
-                  />
-                  {touched.phone && !errors.phone && formData.phone && (
-                    <span className="input-success-icon">✓</span>
-                  )}
-                </div>
-                {errors.phone && (
-                  <span className="error-message-modern" role="alert">{errors.phone}</span>
-                )}
-              </div>
-            </div>
-
-            <div className={`form-group-modern ${errors.universityId ? 'error' : touched.universityId && formData.universityId ? 'success' : ''}`}>
-              <label htmlFor="universityId">
-                University ID <span className="required">*</span>
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                Email Address <span className="text-coral">*</span>
               </label>
-              <div className="input-wrapper">
-                <span className="input-icon">🎓</span>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FontAwesomeIcon icon={faEnvelope} className="text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${
+                    errors.email && touched.email
+                      ? 'border-coral focus:ring-coral focus:border-coral'
+                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                  } focus:outline-none focus:ring-2`}
+                  placeholder="yourname@kluniversity.edu"
+                />
+              </div>
+              {errors.email && touched.email && (
+                <p className="mt-1 text-body-sm text-coral font-body">{errors.email}</p>
+              )}
+              <p className="mt-1 text-body-sm text-gray-500 font-body">
+                Must be a KL University email address
+              </p>
+            </div>
+
+            {/* University ID */}
+            <div>
+              <label htmlFor="universityId" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                University ID <span className="text-coral">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FontAwesomeIcon icon={faIdCard} className="text-gray-400" />
+                </div>
                 <input
                   type="text"
                   id="universityId"
                   name="universityId"
-                  placeholder="STU001"
                   value={formData.universityId}
                   onChange={handleChange}
-                  onBlur={() => handleBlur('universityId')}
-                  className={errors.universityId ? 'input-error' : ''}
-                  aria-invalid={!!errors.universityId}
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body uppercase ${
+                    errors.universityId && touched.universityId
+                      ? 'border-coral focus:ring-coral focus:border-coral'
+                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                  } focus:outline-none focus:ring-2`}
+                  placeholder="STU003"
                   maxLength={20}
                 />
-                {touched.universityId && !errors.universityId && formData.universityId && (
-                  <span className="input-success-icon">✓</span>
-                )}
               </div>
-              {errors.universityId && (
-                <span className="error-message-modern" role="alert">{errors.universityId}</span>
+              {errors.universityId && touched.universityId && (
+                <p className="mt-1 text-body-sm text-coral font-body">{errors.universityId}</p>
               )}
             </div>
 
-            <div className="form-row-modern">
-              <div className={`form-group-modern ${errors.password ? 'error' : touched.password && formData.password ? 'success' : ''}`}>
-                <label htmlFor="password">
-                  Password <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">🔒</span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    onBlur={() => handleBlur('password')}
-                    className={errors.password ? 'input-error' : ''}
-                    aria-invalid={!!errors.password}
-                  />
-                  <button
-                    type="button"
-                    className="toggle-password-modern"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                {formData.password && passwordStrength && (
-                  <div className="password-strength">
-                    <div className="strength-label">Password Strength:</div>
-                    <div className="strength-bar">
-                      <div 
-                        className={`strength-fill ${passwordStrength.strength}`}
-                        style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className={`strength-text ${passwordStrength.strength}`}>
-                      {passwordStrength.strength.charAt(0).toUpperCase() + passwordStrength.strength.slice(1)}
-                    </span>
-                  </div>
-                )}
-                {errors.password && (
-                  <span className="error-message-modern" role="alert">{errors.password}</span>
-                )}
-                {touched.password && !errors.password && formData.password && (
-                  <div className="password-requirements">
-                    <span className="requirement-item success">✓ At least 8 characters</span>
-                    <span className={`requirement-item ${/(?=.*[a-z])/.test(formData.password) ? 'success' : ''}`}>
-                      {/(?=.*[a-z])/.test(formData.password) ? '✓' : '○'} Lowercase letter
-                    </span>
-                    <span className={`requirement-item ${/(?=.*[A-Z])/.test(formData.password) ? 'success' : ''}`}>
-                      {/(?=.*[A-Z])/.test(formData.password) ? '✓' : '○'} Uppercase letter
-                    </span>
-                    <span className={`requirement-item ${/(?=.*\d)/.test(formData.password) ? 'success' : ''}`}>
-                      {/(?=.*\d)/.test(formData.password) ? '✓' : '○'} Number
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className={`form-group-modern ${errors.confirmPassword ? 'error' : touched.confirmPassword && formData.confirmPassword && !errors.confirmPassword ? 'success' : ''}`}>
-                <label htmlFor="confirm-password">
-                  Confirm Password <span className="required">*</span>
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon">🔒</span>
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    id="confirm-password"
-                    name="confirmPassword"
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    onBlur={() => handleBlur('confirmPassword')}
-                    className={errors.confirmPassword ? 'input-error' : ''}
-                    aria-invalid={!!errors.confirmPassword}
-                  />
-                  <button
-                    type="button"
-                    className="toggle-password-modern"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirmPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                {errors.confirmPassword && (
-                  <span className="error-message-modern" role="alert">{errors.confirmPassword}</span>
-                )}
-                {touched.confirmPassword && !errors.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && (
-                  <span className="success-message">Passwords match!</span>
-                )}
-              </div>
-            </div>
-
-            <div className={`form-agree-modern ${!termsAccepted && touched.confirmPassword ? 'error' : ''}`}>
-              <input 
-                type="checkbox" 
-                id="terms" 
-                name="terms" 
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-              />
-              <label htmlFor="terms">
-                I agree to the <Link to="#" className="terms-link">Terms & Conditions</Link>
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
+                Password <span className="text-coral">*</span>
               </label>
-            </div>
-            {!termsAccepted && touched.confirmPassword && (
-              <span className="error-message-modern">Please accept the Terms & Conditions</span>
-            )}
-
-            <button 
-              type="submit" 
-              className="btn-primary-modern btn-full" 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="spinner"></span>
-                  Creating Account...
-                </>
-              ) : (
-                <>
-                  Create Account
-                  <span className="btn-arrow">→</span>
-                </>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FontAwesomeIcon icon={faLock} className="text-gray-400" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-md font-body text-body ${
+                    errors.password && touched.password
+                      ? 'border-coral focus:ring-coral focus:border-coral'
+                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                  } focus:outline-none focus:ring-2`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                </button>
+              </div>
+              {errors.password && touched.password && (
+                <p className="mt-1 text-body-sm text-coral font-body">{errors.password}</p>
               )}
-            </button>
+              <div className="mt-2 text-body-sm text-gray-600 font-body">
+                <p className="mb-1">Password must contain:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li className={formData.password.length >= 8 ? 'text-green' : ''}>
+                    At least 8 characters
+                  </li>
+                  <li className={/(?=.*[a-z])/.test(formData.password) ? 'text-green' : ''}>
+                    One lowercase letter
+                  </li>
+                  <li className={/(?=.*[A-Z])/.test(formData.password) ? 'text-green' : ''}>
+                    One uppercase letter
+                  </li>
+                  <li className={/(?=.*\d)/.test(formData.password) ? 'text-green' : ''}>
+                    One number
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-royal-blue text-white py-3 px-4 rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 focus:outline-none focus:ring-2 focus:ring-royal-blue focus:ring-offset-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
+              >
+                {isSubmitting ? 'Creating Account...' : 'Create Account'}
+              </button>
+            </div>
+
+            {/* Login Link */}
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-body-sm text-gray-600 font-body">
+                Already have an account?{' '}
+                <Link to="/login" className="text-royal-blue hover:text-royal-blue-600 font-body font-medium">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
           </form>
-
-          <div className="auth-divider-modern">
-            <span>OR</span>
-          </div>
-
-          <div className="social-login-modern">
-            <button type="button" className="btn-social-modern google" onClick={() => alert('Google login is not configured in this demo.')}>
-              <span className="social-icon">G</span>
-              <span>Continue with Google</span>
-            </button>
-            <button type="button" className="btn-social-modern facebook" onClick={() => alert('Facebook login is not configured in this demo.')}>
-              <span className="social-icon">f</span>
-              <span>Continue with Facebook</span>
-            </button>
-          </div>
-
-          <p className="auth-link-modern">
-            Already have an account? <Link to="/login">Sign In Here</Link>
-          </p>
         </div>
       </div>
-    </AnimatedSection>
+    </div>
   );
 };
 
