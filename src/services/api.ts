@@ -8,12 +8,22 @@ import { ErrorMessages } from '../utils/errorMessages';
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   
-  // In production, require the environment variable to be set
+  // In production, check if the environment variable is properly set
   if (import.meta.env.PROD) {
-    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+    // Check if URL is missing, empty, or contains localhost
+    const isInvalid = !envUrl || 
+                     (typeof envUrl === 'string' && envUrl.trim() === '') || 
+                     (typeof envUrl === 'string' && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1')));
+    
+    if (isInvalid) {
       const errorMsg = '❌ ERROR: VITE_API_BASE_URL is not properly configured for production!';
       console.error(errorMsg);
-      throw new Error(errorMsg);
+      console.error('Current value:', envUrl || '(undefined)');
+      console.error('Please ensure VITE_API_BASE_URL is set in your deployment environment.');
+      console.error('Expected format: https://your-backend-url.com/api/v1');
+      // Don't throw - allow app to load but API calls will fail with clear errors
+      // This prevents the entire app from crashing
+      return ''; // Return empty string so API calls fail gracefully
     }
     return envUrl;
   }
@@ -24,9 +34,11 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Log API URL in development for debugging
+// Log API URL for debugging
 if (import.meta.env.DEV) {
-  console.log('🔗 API Base URL:', API_BASE_URL);
+  console.log('🔗 API Base URL (DEV):', API_BASE_URL);
+} else if (import.meta.env.PROD) {
+  console.log('🔗 API Base URL (PROD):', API_BASE_URL || '(NOT SET - API calls will fail)');
 }
 
 const api = axios.create({

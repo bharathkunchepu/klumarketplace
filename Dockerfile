@@ -15,11 +15,18 @@ RUN npm ci
 COPY . .
 
 # Build argument for API URL
-# For Render: Set VITE_API_BASE_URL in Render dashboard, it will be available as env var
+# For Render: Environment variables from render.yaml are automatically available
 # For local development: Pass as --build-arg or set as env var
-# NOTE: In production builds, VITE_API_BASE_URL MUST be provided via environment variable
+# NOTE: VITE_API_BASE_URL MUST be provided via environment variable
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+# Verify the environment variable is set (for debugging)
+RUN if [ -z "$VITE_API_BASE_URL" ]; then \
+      echo "⚠️ WARNING: VITE_API_BASE_URL is not set!"; \
+    else \
+      echo "✅ VITE_API_BASE_URL is set to: $VITE_API_BASE_URL"; \
+    fi
 
 # Build the application
 # Vite will use the VITE_API_BASE_URL environment variable at build time
