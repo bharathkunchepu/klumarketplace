@@ -2,7 +2,15 @@ import axios, { AxiosError } from 'axios';
 import { toastUtils } from '../utils/toast';
 import { ErrorMessages } from '../utils/errorMessages';
 
+// Get API base URL from environment variable
+// In production, this MUST be set via VITE_API_BASE_URL environment variable
+// In development, falls back to localhost if not set
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+
+// Warn in production if using localhost (indicates missing env var)
+if (import.meta.env.PROD && API_BASE_URL.includes('localhost')) {
+  console.error('⚠️ WARNING: VITE_API_BASE_URL not set! Using localhost fallback. This will not work in production.');
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -48,18 +56,18 @@ api.interceptors.response.use(
       // This is the most important check - never redirect if we're already on auth pages
       const currentPath = window.location.pathname;
       const isOnAuthPage = currentPath === '/login' || currentPath === '/signup';
-      
+
       // Get the request URL to check if it's a login/signup request
       const requestUrl = (error.config?.url || '').toLowerCase();
-      
+
       // Check if this is an auth endpoint (login/signup)
       // The URL could be '/auth/login', '/api/v1/auth/login', or full URL
-      const isAuthEndpoint = 
-        requestUrl.includes('/auth/login') || 
+      const isAuthEndpoint =
+        requestUrl.includes('/auth/login') ||
         requestUrl.includes('/auth/register') ||
         requestUrl.endsWith('/auth/login') ||
         requestUrl.endsWith('/auth/register');
-      
+
       // DEBUG: Log interceptor behavior
       console.log('🔍 API Interceptor - 401 Error:', {
         currentPath,
@@ -68,7 +76,7 @@ api.interceptors.response.use(
         isAuthEndpoint,
         willRedirect: !(isOnAuthPage || isAuthEndpoint)
       });
-      
+
       // CRITICAL: If we're on auth pages OR it's an auth endpoint, NEVER redirect
       // This prevents page reloads during login/signup attempts
       if (isOnAuthPage || isAuthEndpoint) {
@@ -76,7 +84,7 @@ api.interceptors.response.use(
         // Don't remove token for auth endpoint errors - let the component handle it
         return Promise.reject(error);
       }
-      
+
       // For other endpoints (token expired), remove token and redirect to login
       // This should only happen when user is on other pages and their token expired
       console.warn('⚠️ API Interceptor: Redirecting to login (token expired on other page)');
