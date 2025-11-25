@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -13,20 +12,11 @@ import MyItems from './pages/MyItems';
 import Profile from './pages/Profile';
 import ItemDetail from './pages/ItemDetail';
 import EditItem from './pages/EditItem';
-import { authUtils } from './utils/auth';
 import './App.css';
 
 function App() {
-  // Auto-redirect to products if token exists on app load
-  useEffect(() => {
-    if (authUtils.isLoggedIn()) {
-      const currentPath = window.location.pathname;
-      // Only redirect if on login or signup pages
-      if (currentPath === '/login' || currentPath === '/signup') {
-        window.location.href = '/products';
-      }
-    }
-  }, []);
+  // Note: ProtectedRoute handles redirects using Navigate (no page reload)
+  // This useEffect is kept minimal to avoid interference with form submissions
 
   return (
     <Router>

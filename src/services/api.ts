@@ -44,11 +44,44 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     // Handle 401 - Unauthorized (token expired/invalid)
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      // Only show toast if not on login page
-      if (window.location.pathname !== '/login') {
-        toastUtils.showAuthError(ErrorMessages.AUTH.TOKEN_EXPIRED);
+      // Check if we're currently on the login or signup page FIRST
+      // This is the most important check - never redirect if we're already on auth pages
+      const currentPath = window.location.pathname;
+      const isOnAuthPage = currentPath === '/login' || currentPath === '/signup';
+      
+      // Get the request URL to check if it's a login/signup request
+      const requestUrl = (error.config?.url || '').toLowerCase();
+      
+      // Check if this is an auth endpoint (login/signup)
+      // The URL could be '/auth/login', '/api/v1/auth/login', or full URL
+      const isAuthEndpoint = 
+        requestUrl.includes('/auth/login') || 
+        requestUrl.includes('/auth/register') ||
+        requestUrl.endsWith('/auth/login') ||
+        requestUrl.endsWith('/auth/register');
+      
+      // DEBUG: Log interceptor behavior
+      console.log('🔍 API Interceptor - 401 Error:', {
+        currentPath,
+        isOnAuthPage,
+        requestUrl,
+        isAuthEndpoint,
+        willRedirect: !(isOnAuthPage || isAuthEndpoint)
+      });
+      
+      // CRITICAL: If we're on auth pages OR it's an auth endpoint, NEVER redirect
+      // This prevents page reloads during login/signup attempts
+      if (isOnAuthPage || isAuthEndpoint) {
+        console.log('✅ API Interceptor: Allowing component to handle error (no redirect)');
+        // Don't remove token for auth endpoint errors - let the component handle it
+        return Promise.reject(error);
       }
+      
+      // For other endpoints (token expired), remove token and redirect to login
+      // This should only happen when user is on other pages and their token expired
+      console.warn('⚠️ API Interceptor: Redirecting to login (token expired on other page)');
+      localStorage.removeItem('authToken');
+      toastUtils.showAuthError(ErrorMessages.AUTH.TOKEN_EXPIRED);
       window.location.href = '/login';
       return Promise.reject(error);
     }

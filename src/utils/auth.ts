@@ -47,11 +47,35 @@ export const authUtils = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
       const response = await api.post<AuthResponse>('/auth/login', credentials);
-      if (response.data.token) {
-        authUtils.setToken(response.data.token);
+      
+      // CRITICAL: Handle backend that returns 200 OK with success: false flag
+      // Some backends return 200 with { success: false, message: "Invalid credentials" }
+      // Axios won't throw for 200 status, so we need to check manually
+      if ((response.data as any).success === false || (response.data as any).error) {
+        const errorMessage = (response.data as any).message || 'Invalid credentials';
+        const error: any = new Error(errorMessage);
+        error.response = {
+          status: 401,
+          data: response.data
+        };
+        throw error;
       }
+      
+      // CRITICAL: Verify token exists before considering login successful
+      if (!response.data.token) {
+        const error: any = new Error('No authentication token received from server');
+        error.response = {
+          status: 401,
+          data: { message: 'No authentication token received' }
+        };
+        throw error;
+      }
+      
+      // Only set token if we have one
+      authUtils.setToken(response.data.token);
       return response.data;
     } catch (error: any) {
+      // Re-throw to propagate to Login.tsx catch block
       throw error;
     }
   },

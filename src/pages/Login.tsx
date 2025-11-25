@@ -53,7 +53,7 @@ const Login = () => {
     return undefined;
   };
 
-  const validateField = (name: keyof FormData, value: string): boolean => {
+  const validateField = (name: keyof FormData, value: string): string | undefined => {
     let error: string | undefined;
 
     switch (name) {
@@ -70,7 +70,7 @@ const Login = () => {
       [name]: error,
     }));
 
-    return !error;
+    return error;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,63 +96,99 @@ const Login = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+    e.stopPropagation();
+
     // Mark all fields as touched
     const allFields: (keyof FormData)[] = ['email', 'password'];
     allFields.forEach((field) => {
       setTouched((prev) => ({ ...prev, [field]: true }));
-      validateField(field, formData[field]);
     });
 
-    // Check if form is valid
-    const isValid = allFields.every((field) => {
-      const fieldError = errors[field];
-      if (fieldError) return false;
-      return validateField(field, formData[field]);
+    // Validate all fields
+    const validationErrors: FormErrors = {};
+    allFields.forEach((field) => {
+      const error = validateField(field, formData[field]);
+      if (error) {
+        validationErrors[field] = error;
+      }
     });
 
-    if (!isValid) {
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
     setIsSubmitting(true);
+    console.log('🔵 Starting login attempt...');
+
     try {
-      await authUtils.login({ email: formData.email, password: formData.password });
+      console.log('🔵 Calling authUtils.login...');
+      const result = await authUtils.login({ email: formData.email, password: formData.password });
+
+      console.log('🟢 Login resolved successfully:', result);
+      console.log('🟢 isLoggedIn:', authUtils.isLoggedIn());
+
+      // CRITICAL: Defensive check - verify token was actually set
+      if (!authUtils.isLoggedIn()) {
+        console.error('🔴 Login succeeded but no token found!');
+        throw new Error('Login did not set authentication token');
+      }
+
+      console.log('🟢 About to navigate...');
       toastUtils.showLoginSuccess();
-      // Redirect to products page after successful login
       navigate('/products', { replace: true });
     } catch (error: any) {
+      console.log('🔴 Login threw error:', error);
+      console.log('🔴 Error response:', error?.response);
+      console.log('🔴 Error status:', error?.response?.status);
       const errorMessage = extractErrorMessage(error);
       const apiMessage = error?.response?.data?.message || errorMessage;
-      
-      // Determine if error should be shown inline or as toast
-      // Authentication errors (invalid credentials, account not found) - show inline on password field
-      if (apiMessage.toLowerCase().includes('invalid') || 
-          apiMessage.toLowerCase().includes('incorrect') ||
-          apiMessage.toLowerCase().includes('no account') ||
-          apiMessage.toLowerCase().includes('not found') ||
-          apiMessage.toLowerCase().includes('wrong password')) {
-        setErrors((prev) => ({ 
-          ...prev, 
-          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS 
+
+      // Show authentication errors inline on password field
+      if (apiMessage && (
+        apiMessage.toLowerCase().includes('invalid') ||
+        apiMessage.toLowerCase().includes('incorrect') ||
+        apiMessage.toLowerCase().includes('no account') ||
+        apiMessage.toLowerCase().includes('not found') ||
+        apiMessage.toLowerCase().includes('wrong password')
+      )) {
+        setErrors((prev) => ({
+          ...prev,
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS
         }));
-      } 
+      }
       // Account locked - show as toast
-      else if (apiMessage.toLowerCase().includes('locked') || 
-               apiMessage.toLowerCase().includes('disabled')) {
+      else if (apiMessage && (
+        apiMessage.toLowerCase().includes('locked') ||
+        apiMessage.toLowerCase().includes('disabled')
+      )) {
         toastUtils.error(apiMessage || ErrorMessages.AUTH.ACCOUNT_LOCKED);
       }
       // Network/server errors - show as toast
-      else if (error?.code === 'ERR_NETWORK' || 
-               error?.message === 'Network Error' ||
-               error?.response?.status >= 500) {
+      else if (error?.code === 'ERR_NETWORK' ||
+        error?.message === 'Network Error' ||
+        (error?.response?.status && error.response.status >= 500)) {
         toastUtils.showApiError(error);
+      }
+      // Handle 401 errors specifically (invalid credentials)
+      else if (error?.response?.status === 401) {
+        setErrors((prev) => ({
+          ...prev,
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS
+        }));
+      }
+      // Handle 400 errors (bad request)
+      else if (error?.response?.status === 400) {
+        setErrors((prev) => ({
+          ...prev,
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS
+        }));
       }
       // Other errors - show inline on password field
       else {
-        setErrors((prev) => ({ 
-          ...prev, 
-          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS 
+        setErrors((prev) => ({
+          ...prev,
+          password: apiMessage || ErrorMessages.AUTH.INVALID_CREDENTIALS
         }));
       }
     } finally {
@@ -175,7 +211,7 @@ const Login = () => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <form onSubmit={handleSubmit} className="p-8 space-y-6" noValidate>
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-body-sm font-body font-medium text-gray-700 mb-2">
@@ -192,11 +228,10 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${
-                    errors.email && touched.email
-                      ? 'border-coral focus:ring-coral focus:border-coral'
-                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
-                  } focus:outline-none focus:ring-2`}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-md font-body text-body ${errors.email && touched.email
+                    ? 'border-coral focus:ring-coral focus:border-coral'
+                    : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                    } focus:outline-none focus:ring-2`}
                   placeholder="yourname@kluniversity.edu"
                   autoComplete="email"
                 />
@@ -222,11 +257,10 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-md font-body text-body ${
-                    errors.password && touched.password
-                      ? 'border-coral focus:ring-coral focus:border-coral'
-                      : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
-                  } focus:outline-none focus:ring-2`}
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-md font-body text-body ${errors.password && touched.password
+                    ? 'border-coral focus:ring-coral focus:border-coral'
+                    : 'border-gray-300 focus:ring-royal-blue focus:border-royal-blue'
+                    } focus:outline-none focus:ring-2`}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                 />
@@ -258,6 +292,8 @@ const Login = () => {
             <div className="pt-4">
               <button
                 type="submit"
+                role="button"
+
                 disabled={isSubmitting}
                 className="w-full bg-royal-blue text-white py-3 px-4 rounded-md font-heading font-semibold text-button hover:bg-royal-blue-600 focus:outline-none focus:ring-2 focus:ring-royal-blue focus:ring-offset-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
               >

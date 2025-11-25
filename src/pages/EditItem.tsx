@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faTag, 
-  faDollarSign, 
-  faFileAlt, 
-  faMapMarkerAlt, 
+import {
+  faTag,
+  faDollarSign,
+  faFileAlt,
+  faMapMarkerAlt,
   faPhone,
   faSpinner,
   faUpload,
@@ -82,7 +82,7 @@ const EditItem = () => {
         setLoading(true);
         const itemData = await itemService.getItemById(parseInt(id, 10));
         setItem(itemData);
-        
+
         // Check if user is the owner
         const userId = localStorage.getItem('userId');
         if (userId && itemData.seller.id !== parseInt(userId, 10)) {
@@ -161,12 +161,17 @@ const EditItem = () => {
     if (parts[1] && parts[1].length > 2) {
       return 'Price can have maximum 2 decimal places';
     }
+    // Check total digits (8 integer + 2 decimal = 10 total digits max)
+    const totalDigits = price.replace('.', '').length;
+    if (totalDigits > 10) {
+      return 'Price cannot exceed 10 total digits';
+    }
     return undefined;
   };
 
   const validateField = (field: keyof FormData, value: string): boolean => {
     let error: string | undefined;
-    
+
     switch (field) {
       case 'title':
         error = validateTitle(value);
@@ -196,9 +201,36 @@ const EditItem = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     if (touched[name]) {
       validateField(name as keyof FormData, value);
+    }
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^0-9.]/g, '');
+
+    // Ensure only one decimal point
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Limit decimal places to 2
+    if (parts[1] && parts[1].length > 2) {
+      value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      price: value,
+    }));
+
+    if (touched.price) {
+      validateField('price', value);
     }
   };
 
@@ -213,7 +245,7 @@ const EditItem = () => {
     if (!file) return;
 
     setImageError('');
-    
+
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
@@ -229,7 +261,7 @@ const EditItem = () => {
     }
 
     setSelectedImage(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -272,7 +304,7 @@ const EditItem = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Mark all fields as touched
     const allFields: (keyof FormData)[] = ['title', 'description', 'price', 'category', 'condition', 'location', 'contactInfo'];
     allFields.forEach((field) => {
@@ -450,9 +482,8 @@ const EditItem = () => {
               value={formData.title}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
-                errors.title ? 'border-coral' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${errors.title ? 'border-coral' : 'border-gray-300'
+                }`}
               placeholder="Enter item title"
             />
             {errors.title && <p className="mt-1 text-body-sm text-coral font-body">{errors.title}</p>}
@@ -471,9 +502,8 @@ const EditItem = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               rows={6}
-              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all resize-none ${
-                errors.description ? 'border-coral' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all resize-none ${errors.description ? 'border-coral' : 'border-gray-300'
+                }`}
               placeholder="Describe your item..."
             />
             {errors.description && <p className="mt-1 text-body-sm text-coral font-body">{errors.description}</p>}
@@ -491,17 +521,14 @@ const EditItem = () => {
                 Price (₹) <span className="text-coral">*</span>
               </label>
               <input
-                type="number"
+                type="text"
                 id="price"
                 name="price"
                 value={formData.price}
-                onChange={handleChange}
+                onChange={handlePriceChange}
                 onBlur={handleBlur}
-                step="0.01"
-                min="0.01"
-                className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
-                  errors.price ? 'border-coral' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${errors.price ? 'border-coral' : 'border-gray-300'
+                  }`}
                 placeholder="0.00"
               />
               {errors.price && <p className="mt-1 text-body-sm text-coral font-body">{errors.price}</p>}
@@ -519,9 +546,8 @@ const EditItem = () => {
                 value={formData.category}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full px-4 py-3 border rounded-md font-body text-body bg-white focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all appearance-none cursor-pointer ${
-                  errors.category ? 'border-coral' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-md font-body text-body bg-white focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all appearance-none cursor-pointer ${errors.category ? 'border-coral' : 'border-gray-300'
+                  }`}
               >
                 <option value="">Select category</option>
                 <option value={ItemCategory.BOOKS}>Books</option>
@@ -549,9 +575,8 @@ const EditItem = () => {
               value={formData.condition}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`w-full px-4 py-3 border rounded-md font-body text-body bg-white focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all appearance-none cursor-pointer ${
-                errors.condition ? 'border-coral' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-md font-body text-body bg-white focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all appearance-none cursor-pointer ${errors.condition ? 'border-coral' : 'border-gray-300'
+                }`}
             >
               <option value="">Select condition</option>
               <option value={ItemCondition.NEW}>New</option>
@@ -576,9 +601,8 @@ const EditItem = () => {
               value={formData.location}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
-                errors.location ? 'border-coral' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${errors.location ? 'border-coral' : 'border-gray-300'
+                }`}
               placeholder="e.g., Main Campus, Building A"
             />
             {errors.location && <p className="mt-1 text-body-sm text-coral font-body">{errors.location}</p>}
@@ -597,9 +621,8 @@ const EditItem = () => {
               value={formData.contactInfo}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${
-                errors.contactInfo ? 'border-coral' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-md font-body text-body focus:ring-2 focus:ring-royal-blue focus:border-royal-blue transition-all ${errors.contactInfo ? 'border-coral' : 'border-gray-300'
+                }`}
               placeholder="Email or phone number"
             />
             {errors.contactInfo && <p className="mt-1 text-body-sm text-coral font-body">{errors.contactInfo}</p>}
