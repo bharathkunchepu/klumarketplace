@@ -129,6 +129,11 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 group">
+            <img 
+              src="/logo.png" 
+              alt="KLU Marketplace" 
+              className="h-10 w-auto transition-all duration-200 ease-out group-hover:scale-105"
+            />
             <span className={`text-2xl font-heading font-bold ${logoClasses} transition-all duration-200 ease-out group-hover:scale-105 ${isScrolled ? 'group-hover:text-royal-blue-600' : 'group-hover:text-white/80'}`}>
               KLU Marketplace
             </span>

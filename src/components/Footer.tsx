@@ -22,9 +22,16 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-h3 font-heading font-semibold text-royal-blue mb-4">
-              KLU Marketplace
-            </h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <img 
+                src="/logo.png" 
+                alt="KLU Marketplace" 
+                className="h-8 w-auto"
+              />
+              <h3 className="text-h3 font-heading font-semibold text-royal-blue">
+                KLU Marketplace
+              </h3>
+            </div>
             <p className="text-body-sm text-gray-600 font-body mb-4">
               Your trusted platform for buying and selling items within the KLU community.
               Connect with fellow students and make the most of your campus experience.

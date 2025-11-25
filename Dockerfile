@@ -14,10 +14,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build argument for API URL (with default for local development)
+# Build argument for API URL
 # For Render: Set VITE_API_BASE_URL in Render dashboard, it will be available as env var
-# For local: Pass as --build-arg or set as env var
-ARG VITE_API_BASE_URL=http://localhost:8080/api/v1
+# For local development: Pass as --build-arg or set as env var
+# NOTE: In production builds, VITE_API_BASE_URL MUST be provided via environment variable
+ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build the application

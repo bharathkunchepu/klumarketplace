@@ -12,6 +12,7 @@ import MyItems from './pages/MyItems';
 import Profile from './pages/Profile';
 import ItemDetail from './pages/ItemDetail';
 import EditItem from './pages/EditItem';
+import NotFound from './pages/NotFound';
 import './App.css';
 
 function App() {
@@ -85,7 +86,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         <Footer />

@@ -5,11 +5,28 @@ import { ErrorMessages } from '../utils/errorMessages';
 // Get API base URL from environment variable
 // In production, this MUST be set via VITE_API_BASE_URL environment variable
 // In development, falls back to localhost if not set
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  
+  // In production, require the environment variable to be set
+  if (import.meta.env.PROD) {
+    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+      const errorMsg = '❌ ERROR: VITE_API_BASE_URL is not properly configured for production!';
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    return envUrl;
+  }
+  
+  // In development, fallback to localhost
+  return envUrl || 'http://localhost:8080/api/v1';
+};
 
-// Warn in production if using localhost (indicates missing env var)
-if (import.meta.env.PROD && API_BASE_URL.includes('localhost')) {
-  console.error('⚠️ WARNING: VITE_API_BASE_URL not set! Using localhost fallback. This will not work in production.');
+const API_BASE_URL = getApiBaseUrl();
+
+// Log API URL in development for debugging
+if (import.meta.env.DEV) {
+  console.log('🔗 API Base URL:', API_BASE_URL);
 }
 
 const api = axios.create({
