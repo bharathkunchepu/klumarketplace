@@ -84,21 +84,6 @@ const Navbar = () => {
     authUtils.logout();
   };
 
-  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      if (location.pathname !== '/') {
-        window.location.href = `/${href}`;
-      } else {
-        const element = document.querySelector(href);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-      setIsMenuOpen(false);
-    }
-  };
-
   const navClasses = isScrolled
     ? 'bg-white border-b border-gray-200 shadow-md'
     : 'border-b border-transparent';
@@ -141,46 +126,54 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <a
-              href="/#how-it-works"
-              onClick={(e) => handleAnchorClick(e, '#how-it-works')}
-              className={`nav-link-item ${textClasses} font-body cursor-pointer relative group text-body-sm`}
+            <Link
+              to="/"
+              className={`nav-link-item font-body relative group text-body-sm transition-all duration-300 ${
+                location.pathname === '/'
+                  ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                  : textClasses
+              }`}
             >
-              How It Works
-              <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
-            </a>
-            <a
-              href="/#about"
-              onClick={(e) => handleAnchorClick(e, '#about')}
-              className={`nav-link-item ${textClasses} font-body cursor-pointer relative group text-body-sm`}
-            >
-              About Us
-              <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
-            </a>
-            <a
-              href="/#services"
-              onClick={(e) => handleAnchorClick(e, '#services')}
-              className={`nav-link-item ${textClasses} font-body cursor-pointer relative group text-body-sm`}
-            >
-              Services
-              <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
-            </a>
-            <a
-              href="/#reviews"
-              onClick={(e) => handleAnchorClick(e, '#reviews')}
-              className={`nav-link-item ${textClasses} font-body cursor-pointer relative group text-body-sm`}
-            >
-              Reviews
-              <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
-            </a>
+              Home
+              <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${
+                location.pathname === '/'
+                  ? 'w-full'
+                  : 'w-0 group-hover:w-full'
+              } ${isScrolled ? 'bg-royal-blue' : 'bg-white'}`}></span>
+            </Link>
+            
             {isLoggedIn ? (
               <>
                 <Link
                   to="/products"
-                  className={`nav-link-item ${textClasses} font-body relative group text-body-sm`}
+                  className={`nav-link-item font-body relative group text-body-sm transition-all duration-300 ${
+                    location.pathname === '/products'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  }`}
                 >
                   Products
-                  <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
+                  <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${
+                    location.pathname === '/products'
+                      ? 'w-full'
+                      : 'w-0 group-hover:w-full'
+                  } ${isScrolled ? 'bg-royal-blue' : 'bg-white'}`}></span>
+                </Link>
+                
+                <Link
+                  to="/profile"
+                  className={`nav-link-item font-body relative group text-body-sm transition-all duration-300 ${
+                    location.pathname === '/profile'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  }`}
+                >
+                  Profile
+                  <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${
+                    location.pathname === '/profile'
+                      ? 'w-full'
+                      : 'w-0 group-hover:w-full'
+                  } ${isScrolled ? 'bg-royal-blue' : 'bg-white'}`}></span>
                 </Link>
                 
                 {/* User Dropdown */}
@@ -224,17 +217,11 @@ const Navbar = () => {
                       isScrolled ? 'bg-white border-gray-200' : 'bg-white/95 backdrop-blur-sm border-white/20'
                     } py-2 z-50`}>
                       <Link
-                        to="/profile"
-                        onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-gray-700 font-body"
-                      >
-                        <FontAwesomeIcon icon={faUser} className="text-royal-blue" />
-                        <span>My Profile</span>
-                      </Link>
-                      <Link
                         to="/my-items"
                         onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-gray-700 font-body"
+                        className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors font-body ${
+                          location.pathname === '/my-items' ? 'bg-gray-50 text-royal-blue font-semibold' : 'text-gray-700'
+                        }`}
                       >
                         <FontAwesomeIcon icon={faBox} className="text-royal-blue" />
                         <span>My Items</span>
@@ -258,10 +245,18 @@ const Navbar = () => {
               <>
                 <Link
                   to="/login"
-                  className={`nav-link-item ${textClasses} font-body relative group text-body-sm`}
+                  className={`nav-link-item font-body relative group text-body-sm transition-all duration-300 ${
+                    location.pathname === '/login'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  }`}
                 >
                   Login
-                  <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${isScrolled ? 'bg-royal-blue' : 'bg-white'} transition-all duration-300 group-hover:w-full`}></span>
+                  <span className={`absolute bottom-0 left-0 h-0.5 transition-all duration-300 ${
+                    location.pathname === '/login'
+                      ? 'w-full'
+                      : 'w-0 group-hover:w-full'
+                  } ${isScrolled ? 'bg-royal-blue' : 'bg-white'}`}></span>
                 </Link>
                 <Link
                   to="/signup"
@@ -300,42 +295,42 @@ const Navbar = () => {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className={`md:hidden py-4 space-y-4 animate-fade-in ${isScrolled ? 'bg-white' : 'bg-transparent backdrop-blur-sm rounded-lg mt-2'}`}>
-            <a
-              href="/#how-it-works"
-              onClick={(e) => handleAnchorClick(e, '#how-it-works')}
-              className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body cursor-pointer hover:translate-x-2 hover:font-medium text-body-sm`}
+            <Link
+              to="/"
+              className={`block font-body transition-all duration-300 hover:translate-x-2 hover:font-medium text-body-sm ${
+                location.pathname === '/'
+                  ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                  : textClasses
+              } ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'}`}
+              onClick={() => setIsMenuOpen(false)}
             >
-              How It Works
-            </a>
-            <a
-              href="/#about"
-              onClick={(e) => handleAnchorClick(e, '#about')}
-              className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body cursor-pointer hover:translate-x-2 hover:font-medium text-body-sm`}
-            >
-              About Us
-            </a>
-            <a
-              href="/#services"
-              onClick={(e) => handleAnchorClick(e, '#services')}
-              className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body cursor-pointer hover:translate-x-2 hover:font-medium text-body-sm`}
-            >
-              Services
-            </a>
-            <a
-              href="/#reviews"
-              onClick={(e) => handleAnchorClick(e, '#reviews')}
-              className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body cursor-pointer hover:translate-x-2 hover:font-medium text-body-sm`}
-            >
-              Reviews
-            </a>
+              Home
+            </Link>
+            
             {isLoggedIn ? (
               <>
                 <Link
                   to="/products"
-                  className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body hover:translate-x-2 hover:font-medium text-body-sm`}
+                  className={`block font-body transition-all duration-300 hover:translate-x-2 hover:font-medium text-body-sm ${
+                    location.pathname === '/products'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  } ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'}`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Products
+                </Link>
+                
+                <Link
+                  to="/profile"
+                  className={`block font-body transition-all duration-300 hover:translate-x-2 hover:font-medium text-body-sm ${
+                    location.pathname === '/profile'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  } ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
                 </Link>
                 
                 {/* User Profile Section in Mobile */}
@@ -367,15 +362,12 @@ const Navbar = () => {
                     </div>
                   </div>
                   <Link
-                    to="/profile"
-                    className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body hover:translate-x-2 hover:font-medium text-body-sm mb-2`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    My Profile
-                  </Link>
-                  <Link
                     to="/my-items"
-                    className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body hover:translate-x-2 hover:font-medium text-body-sm mb-2`}
+                    className={`block font-body transition-all duration-300 hover:translate-x-2 hover:font-medium text-body-sm mb-2 ${
+                      location.pathname === '/my-items'
+                        ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                        : textClasses
+                    } ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'}`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     My Items
@@ -395,7 +387,11 @@ const Navbar = () => {
               <>
                 <Link
                   to="/login"
-                  className={`block ${textClasses} ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'} transition-all duration-300 font-body hover:translate-x-2 hover:font-medium text-body-sm`}
+                  className={`block font-body transition-all duration-300 hover:translate-x-2 hover:font-medium text-body-sm ${
+                    location.pathname === '/login'
+                      ? isScrolled ? 'text-royal-blue font-semibold' : 'text-white font-semibold'
+                      : textClasses
+                  } ${isScrolled ? 'hover:text-royal-blue' : 'hover:text-white/80'}`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Login
